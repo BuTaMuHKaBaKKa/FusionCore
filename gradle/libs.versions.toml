@@ -21,6 +21,14 @@ special-source = '1.11.5'
 
 mixin = '0.8.5'
 
+# Fusion Core: Adventure, so plugins built against Paper find it at runtime.
+# Keep in step with the Adventure that Paper ships for this Minecraft version.
+adventure = '4.17.0'
+kyori-examination = '1.3.0'
+# option 1.1.0 is a strict superset of the 1.0.0 that Adventure 4.17 names; plugins that bundle 1.1.0 unrelocated (DecentHolograms)
+# would otherwise mix both versions in one package and fail with IllegalAccessError
+kyori-option = '1.1.0'
+
 # arclight
 arclight-api = '1.7.3'
 izzel-tools = '1.3.0'
@@ -31,8 +39,20 @@ minecraft = '1.21.1'
 parchment = '2024.11.17'
 forge = '52.1.16'
 full-forge = '1.21.1-52.1.14'
-fabric-loader = '0.19.5'
-fabric-api = '0.116.17+1.21.1'
+# Pinned deliberately, do not bump without re-testing on NeoForge.
+# Loom puts the mixin implementation that fabric-loader names in its
+# fabric-installer.json on the compile classpath for every module, including
+# fusioncore-common. fabric-loader >= 0.19 selects sponge-mixin 0.17.x, which
+# redeclared @Redirect.at() as At[] instead of At. Everything compiled against it
+# gets an array-valued `at`, and NeoForge's own mixin (sponge-mixin 0.15.2) plus
+# MixinExtras read it as a single annotation:
+#   ClassCastException: java.util.ArrayList cannot be cast to
+#   org.objectweb.asm.tree.AnnotationNode
+#   at FactoryRedirectWrapperMixinTransformer.transform
+# The server then dies during mixin apply, before world load. fabric-loader 0.18.2
+# is the last version that names sponge-mixin 0.16.5, which still declares At at().
+fabric-loader = '0.18.2'
+fabric-api = '0.116.7+1.21.1'
 neoforge = '21.1.250'
 fabric-permissions-api = '0.3.1'
 
@@ -68,7 +88,7 @@ at = { module = 'org.cadixdev:at', version.ref = 'cadixdev-at' }
 mercury = { module = 'dev.architectury:mercury', version.ref = 'cadixdev-mercury' }
 specialsource = { module = 'net.md-5:SpecialSource', version.ref = 'special-source' }
 
-# subProjects (arclight-common, and other in platforms)
+# subProjects (fusioncore-common, and other in platforms)
 minecraft = { module = 'com.mojang:minecraft', version.ref = 'minecraft' }
 spigot-api = { module = 'org.spigotmc:spigot-api', version.ref = 'spigot-api' }
 bungeecord-chat = { module = 'net.md-5:bungeecord-chat', version.ref = 'bungeecord-chat-api' }
@@ -84,7 +104,7 @@ arclight-api = { module = 'io.izzel.arclight:arclight-api', version.ref = 'arcli
 izzel-tools = { module = 'io.izzel:tools', version.ref = 'izzel-tools' }
 mixin-tools = { module = 'io.izzel.arclight:mixin-tools', version.ref = 'mixin-tools' }
 
-# platforms (arclight-forge, arclight-fabric, arclight-neoforge)
+# platforms (fusioncore-forge, fusioncore-fabric, fusioncore-neoforge)
 forge = { module = 'net.minecraftforge:forge', version.ref = 'full-forge' }
 fabric-loader = { module = 'net.fabricmc:fabric-loader', version.ref = 'fabric-loader' }
 fabric-api = { module = 'net.fabricmc.fabric-api:fabric-api', version.ref = 'fabric-api' }
@@ -100,9 +120,26 @@ configurate-hocon = { module = 'org.spongepowered:configurate-hocon', version.re
 # bootstrap
 sponge-mixin = { module = 'org.spongepowered:mixin', version.ref = 'mixin' }
 
+# adventure (Fusion Core)
+adventure-api = { module = 'net.kyori:adventure-api', version.ref = 'adventure' }
+adventure-key = { module = 'net.kyori:adventure-key', version.ref = 'adventure' }
+adventure-nbt = { module = 'net.kyori:adventure-nbt', version.ref = 'adventure' }
+adventure-serializer-gson = { module = 'net.kyori:adventure-text-serializer-gson', version.ref = 'adventure' }
+adventure-serializer-json = { module = 'net.kyori:adventure-text-serializer-json', version.ref = 'adventure' }
+adventure-serializer-legacy = { module = 'net.kyori:adventure-text-serializer-legacy', version.ref = 'adventure' }
+adventure-serializer-plain = { module = 'net.kyori:adventure-text-serializer-plain', version.ref = 'adventure' }
+adventure-minimessage = { module = 'net.kyori:adventure-text-minimessage', version.ref = 'adventure' }
+adventure-logger-slf4j = { module = 'net.kyori:adventure-text-logger-slf4j', version.ref = 'adventure' }
+kyori-examination-api = { module = 'net.kyori:examination-api', version.ref = 'kyori-examination' }
+kyori-examination-string = { module = 'net.kyori:examination-string', version.ref = 'kyori-examination' }
+kyori-option = { module = 'net.kyori:option', version.ref = 'kyori-option' }
+
 [bundles]
 asm = ['asm-commons', 'asm-tree', 'asm-util']
 lorenz = ['lorenz-core', 'lorenz-proguard', 'lorenz-tiny']
 log4j = ['log4j-api', 'log4j-core', 'log4j-jul']
 spigot-shade = ['spigot-api', 'bungeecord-chat']
+adventure = ['adventure-api', 'adventure-key', 'adventure-nbt', 'adventure-serializer-gson',
+             'adventure-serializer-json', 'adventure-serializer-legacy', 'adventure-serializer-plain',
+             'adventure-minimessage', 'adventure-logger-slf4j', 'kyori-examination-api', 'kyori-examination-string', 'kyori-option']
 spigot-runtime = ['spigot-api', 'snakeyaml', 'mysql-connectorj', 'bungeecord-chat']

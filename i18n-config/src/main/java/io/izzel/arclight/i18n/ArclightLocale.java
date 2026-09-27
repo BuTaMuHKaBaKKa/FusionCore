@@ -102,7 +102,7 @@ public class ArclightLocale {
 
     private static Map.Entry<String, String> getLocale() {
         try {
-            Path path = Paths.get("arclight.conf");
+            Path path = FusionCoreFiles.config();
             if (!Files.exists(path)) {
                 throw new Exception();
             } else {

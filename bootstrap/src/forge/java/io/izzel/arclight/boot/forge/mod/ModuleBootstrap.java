@@ -24,7 +24,7 @@ public class ModuleBootstrap implements BootstrapEntryPoint, AbstractBootstrap {
     public void main(String[] args) {
         System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
         System.setProperty("log4j.jul.LoggerAdapter", "io.izzel.arclight.boot.log.ArclightLoggerAdapter");
-        System.setProperty("log4j.configurationFile", "arclight-log4j2.xml");
+        System.setProperty("log4j.configurationFile", "fusioncore-log4j2.xml");
         ArclightLocale.info("i18n.using-language", ArclightConfig.spec().getLocale().getCurrent(), ArclightConfig.spec().getLocale().getFallback());
         try {
             int javaVersion = (int) Float.parseFloat(System.getProperty("java.class.version"));
@@ -34,7 +34,7 @@ public class ModuleBootstrap implements BootstrapEntryPoint, AbstractBootstrap {
             }
             Unsafe.ensureClassInitialized(EnumHelper.class);
         } catch (Throwable t) {
-            System.err.println("Your Java is not compatible with Arclight.");
+            System.err.println("Your Java is not compatible with Fusion Core.");
             t.printStackTrace();
             return;
         }
@@ -43,14 +43,14 @@ public class ModuleBootstrap implements BootstrapEntryPoint, AbstractBootstrap {
             this.dirtyHacks();
             int targetIndex = Arrays.asList(args).indexOf("--launchTarget");
             if (targetIndex >= 0 && targetIndex < args.length - 1) {
-                args[targetIndex + 1] = "arclight_server";
+                args[targetIndex + 1] = "fusioncore_server";
             }
             ServiceLoader.load(getClass().getModule().getLayer(), BootstrapEntryPoint.class).stream()
                 .filter(it -> !it.type().getName().contains("arclight"))
                 .findFirst().orElseThrow().get().main(args);
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Fail to launch Arclight.");
+            System.err.println("Failed to launch Fusion Core.");
         }
     }
 

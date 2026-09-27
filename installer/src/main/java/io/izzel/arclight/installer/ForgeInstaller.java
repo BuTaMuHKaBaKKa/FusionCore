@@ -64,6 +64,7 @@ public class ForgeInstaller {
             MinecraftProvider.handleFutures(System.out::println, array);
             pool.shutdownNow();
         }
+        InstallerLeftovers.clean(); // Fusion Core
         return classpath(path, installInfo);
     }
 
@@ -106,7 +107,7 @@ public class ForgeInstaller {
             classpath.append(File.pathSeparator).append("libraries/").append(Util.mavenToPath(lib));
         }
         System.setProperty("java.class.path", classpath.toString());
-        return Map.entry("io.izzel.arclight.boot.forge.application.ApplicationBootstrap", List.of("--launchTarget", "arclight_server"));
+        return Map.entry("io.izzel.arclight.boot.forge.application.ApplicationBootstrap", List.of("--launchTarget", "fusioncore_server"));
     }
 
     @SuppressWarnings("removal")

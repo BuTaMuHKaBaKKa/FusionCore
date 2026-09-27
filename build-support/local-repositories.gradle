@@ -1,0 +1,31 @@
+// Init script for build-fusioncore.ps1 -UseDownloadRelay: route Maven repositories
+// through the local relay started by that script. Not used by a normal build.
+def routes = [
+  'repo.maven.apache.org': 'central',
+  'repo1.maven.org': 'central',
+  'maven.neoforged.net': 'neoforge',
+  'maven.minecraftforge.net': 'forge',
+  'files.minecraftforge.net': 'forge',
+  'maven.fabricmc.net': 'fabric',
+  'maven.architectury.dev': 'architectury',
+  'maven.parchmentmc.org': 'parchment',
+  'repo.spongepowered.org': 'sponge',
+  'oss.sonatype.org': 'sonatype',
+  'hub.spigotmc.org': 'spigot',
+  'maven.izzel.io': 'izzel',
+  'jitpack.io': 'jitpack',
+  'libraries.minecraft.net': 'mojang',
+  'plugins.gradle.org': 'plugins'
+]
+allprojects {
+  [repositories, buildscript.repositories].each { fusionRepos ->
+    fusionRepos.withType(org.gradle.api.artifacts.repositories.MavenArtifactRepository).all { repo ->
+      def route = routes[repo.url.host]
+      if (route) {
+        println("Fusion Core build relay: " + repo.url)
+        repo.url = uri("http://127.0.0.1:18761/${route}/")
+        repo.allowInsecureProtocol = true
+      }
+    }
+  }
+}

@@ -23,14 +23,20 @@ public class Main_Neoforge {
             method.invoke(null, (Object) target);
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Fail to launch Arclight.");
+            System.err.println("Failed to launch Fusion Core.");
             System.exit(-1);
         }
     }
 
     @SuppressWarnings("unchecked")
     private static Map.Entry<String, List<String>> forgeInstall() throws Throwable {
-        var path = Paths.get(".arclight", "gson.jar");
+        // The working folder was .vitacore (VitaCore) or .arclight (Arclight) before; keep its unpacked core and class cache
+        for (String previous : new String[]{".vitacore", ".arclight"}) {
+            if (Files.isDirectory(Paths.get(previous)) && !Files.exists(Paths.get(".fusioncore"))) {
+                Files.move(Paths.get(previous), Paths.get(".fusioncore"));
+            }
+        }
+        var path = Paths.get(".fusioncore", "gson.jar");
         if (!Files.exists(path)) {
             Files.createDirectories(path.getParent());
             Files.copy(Objects.requireNonNull(Main_Neoforge.class.getResourceAsStream("/gson.jar")), path);

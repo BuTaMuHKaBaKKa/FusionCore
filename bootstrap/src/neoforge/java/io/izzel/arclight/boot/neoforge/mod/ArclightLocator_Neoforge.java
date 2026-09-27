@@ -20,7 +20,7 @@ public class ArclightLocator_Neoforge implements IModFileCandidateLocator {
 
     protected Path loadJar() {
         var version = System.getProperty("arclight.version");
-        return Paths.get(".arclight", "mod_file", version + ".jar");
+        return Paths.get(".fusioncore", "mod_file", version + ".jar");
     }
 
     @Override

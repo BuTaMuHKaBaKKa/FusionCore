@@ -7,3 +7,7 @@ bin/
 *.log
 run_*/
 run
+
+# Fusion Core
+/build/maven-relay-cache/
+/build/relay*.log

@@ -1,0 +1,37 @@
+{
+  "id": "arclight",
+  "version": "${version}",
+  "schemaVersion": 1,
+  "name": "Fusion Core",
+  "authors": [
+    "Fusion Core contributors",
+    "IzzelAliz and Arclight contributors (upstream)"
+  ],
+  "description": "Fusion Core: Fabric with Bukkit/Spigot plugins, based on Arclight",
+  "license": "GNU GENERAL PUBLIC LICENSE Version 3",
+  "environment": "server",
+  "mixins": [
+    "mixins.fusioncore.fabric.json",
+    "mixins.fusioncore.core.json",
+    "mixins.fusioncore.bukkit.json",
+    "mixins.fusioncore.vanilla.json",
+    "mixins.fusioncore.impl.optimization.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16",
+    "fabric-permissions-api-v0": ">=0.3"
+  },
+  "custom": {
+    "lithium:options": {
+      "mixin.ai.poi.fast_portals": false
+    }
+  },
+  "entrypoints": {
+    "main": [
+      "io.izzel.arclight.fabric.ArclightModEntrypoint"
+    ],
+    "arclight_boot": [
+      "io.izzel.arclight.fabric.boot.FabricBootstrap"
+    ]
+  }
+}

@@ -37,7 +37,7 @@ public class NeoforgeInstaller {
     public static Map.Entry<String, List<String>> applicationInstall() throws Throwable {
         InputStream stream = ForgeInstaller.class.getResourceAsStream("/META-INF/installer.json");
         InstallInfo installInfo = new Gson().fromJson(new InputStreamReader(stream), InstallInfo.class);
-        List<Supplier<Path>> suppliers = MinecraftProvider.checkMavenNoSource(installInfo.libraries);
+        List<Supplier<Path>> suppliers = MinecraftProvider.checkMavenNoSource(installInfo.neoforgeDeps());
         var sysType = File.pathSeparatorChar == ';' ? "win" : "unix";
         Path path = Paths.get("libraries", "net", "neoforged", "neoforge", installInfo.installer.neoforge, sysType + "_args.txt");
         var installForge = !Files.exists(path) || forgeClasspathMissing(path);
@@ -70,6 +70,7 @@ public class NeoforgeInstaller {
             MinecraftProvider.handleFutures(System.out::println, array);
             pool.shutdownNow();
         }
+        InstallerLeftovers.clean(); // Fusion Core
         return classpath(path, installInfo);
     }
 
@@ -126,7 +127,7 @@ public class NeoforgeInstaller {
                     if (split[0].equals("legacyClassPath")) {
                         split[1] =
                             Stream.concat(
-                                Stream.concat(Stream.concat(Stream.of(self.toString()), Arrays.stream(split[1].split(File.pathSeparator))), installInfo.libraries.keySet().stream()
+                                Stream.concat(Stream.concat(Stream.of(self.toString()), Arrays.stream(split[1].split(File.pathSeparator))), installInfo.neoforgeDeps().keySet().stream()
                                     .peek(it -> {
                                         var lib = Paths.get("libraries", Util.mavenToPath(it));
                                         var name = lib.getFileName().toString();

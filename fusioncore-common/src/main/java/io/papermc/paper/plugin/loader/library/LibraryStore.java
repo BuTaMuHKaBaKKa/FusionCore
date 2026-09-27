@@ -1,0 +1,25 @@
+// Fusion Core: Paper API 1.21.1 as published in paper-api sources; only the jspecify annotations are swapped for JetBrains ones.
+package io.papermc.paper.plugin.loader.library;
+
+import java.nio.file.Path;
+import org.jetbrains.annotations.ApiStatus;
+
+/**
+ * Represents a storage that stores library jars.
+ * <p>
+ * The library store api allows plugins to register specific dependencies into their runtime classloader when their
+ * {@link io.papermc.paper.plugin.loader.PluginLoader} is processed.
+ *
+ * @see io.papermc.paper.plugin.loader.PluginLoader
+ */
+@ApiStatus.Internal
+public interface LibraryStore {
+
+    /**
+     * Adds the provided library path to this library store.
+     *
+     * @param library path to the libraries jar file on the disk
+     */
+    void addLibrary(Path library);
+
+}

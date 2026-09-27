@@ -1,0 +1,77 @@
+name: 🐞 Ошибка / Bug report
+description: Сообщить об ошибке в Fusion Core
+labels: [ "bug" ]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fusion Core сейчас в бете. Спасибо, что тестируете!
+        Чем точнее описание и чем полнее логи, тем быстрее получится исправить.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Перед отправкой
+      options:
+        - label: Я использую последнюю версию Fusion Core со страницы Releases
+          required: true
+        - label: Я поискал среди открытых Issues, такой ошибки там нет
+          required: true
+        - label: Мои моды — для NeoForge 1.21.1, плагины — для 1.21, все их зависимости установлены
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия Fusion Core
+      description: Строка из начала logs/latest.log или вывод /fusioncore
+      placeholder: fusioncore-neoforge-1.21.1-0.2.1+39398e8
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: ОС и версия Java
+      placeholder: Windows 11, Java 21.0.5
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Что случилось
+      description: Что вы делали, что ожидали увидеть и что произошло на самом деле
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Как повторить
+      description: По шагам. Если ошибка воспроизводится с одним модом или плагином, укажите каким
+      placeholder: |
+        1. Поставить плагин ...
+        2. Зайти на сервер и ...
+        3. Ошибка в консоли
+    validations:
+      required: true
+
+  - type: textarea
+    id: mods-plugins
+    attributes:
+      label: Моды и плагины
+      description: Список файлов из папок mods/ и plugins/ (с версиями)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи
+      description: |
+        Прикрепите logs/latest.log целиком (перетащите файл в это поле) или ссылку на mclo.gs.
+        Если сервер упал — ещё файл из crash-reports/.
+    validations:
+      required: true

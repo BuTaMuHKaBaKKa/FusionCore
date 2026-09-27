@@ -26,13 +26,13 @@ public class ArclightJarContentsImplFilter {
     private static final MethodHandles.Lookup LOOKUP = Unsafe.lookup();
     private static VarHandle PACKAGES;
     private static Set<String> serviceLayerPackages;
-    private static final Logger LOGGER = LogManager.getLogger("Arclight");
+    private static final Logger LOGGER = LogManager.getLogger("Fusion Core");
 
     static {
         try {
             PACKAGES = LOOKUP.findVarHandle(JarContentsImpl.class, "packages", Set.class);
         } catch (ReflectiveOperationException e) {
-            LOGGER.error("Arclight failed to filter JarContents. This may cause dependency conflicts with some mods!", e);
+            LOGGER.error("Fusion Core failed to filter JarContents. This may cause dependency conflicts with some mods!", e);
         }
         serviceLayerPackages = ArclightJarContentsImplFilter.class
                 .getModule()

@@ -1,0 +1,58 @@
+plugins {
+    id 'architectury-plugin'
+}
+
+architectury {
+    common(rootProject.ext.supportedPlatforms)
+}
+
+loom {
+    accessWidenerPath = file('src/main/resources/fusioncore.accesswidener')
+}
+
+dependencies {
+    modImplementation libs.fabric.loader
+
+    compileOnly rootProject.ext.generatedSpigot
+
+    implementation libs.izzel.tools
+    implementation libs.arclight.api
+    implementation libs.mixin.tools
+    annotationProcessor(libs.mixin.tools) { transitive = false }
+
+    // spigot
+    implementation libs.spigot.api
+    implementation libs.jline
+    implementation libs.terminalconsoleappender
+    implementation libs.specialsource
+    implementation libs.log4j.jul
+    implementation libs.bungeecord.chat
+    // Fusion Core: compiled against, shipped by the installer at runtime.
+    compileOnly libs.bundles.adventure
+    compileOnly 'com.googlecode.json-simple:json-simple:1.1.1' // Fusion Core: shipped as an installer library; used by the Paper timings API
+    // Fusion Core: Maven Resolver as the installer ships it (Spigot's LibraryLoader uses it too); Paper's MavenLibraryResolver
+    compileOnly('org.apache.maven:maven-resolver-provider:3.8.5') { transitive = false }
+    compileOnly('org.apache.maven.resolver:maven-resolver-api:1.6.3') { transitive = false }
+    compileOnly('org.apache.maven.resolver:maven-resolver-spi:1.6.3') { transitive = false }
+    compileOnly('org.apache.maven.resolver:maven-resolver-impl:1.6.3') { transitive = false }
+    compileOnly('org.apache.maven.resolver:maven-resolver-connector-basic:1.7.3') { transitive = false }
+    compileOnly('org.apache.maven.resolver:maven-resolver-transport-http:1.7.3') { transitive = false }
+    implementation libs.mysql.connectorj
+    implementation libs.snakeyaml
+
+    implementation project(':i18n-config')
+}
+
+// Fusion Core: public stubs of Bukkit classes that Paper made public (PublicClassProcessor); ahead of spigot-api on the
+// compile classpath, never packaged
+sourceSets {
+    stubs {
+        java.srcDir 'src/stubs/java'
+    }
+}
+
+compileJava {
+    options.compilerArgs << '-XDignore.symbol.file' << '-XDenableSunApiLintControl'
+    options.encoding = 'UTF-8'
+    classpath = sourceSets.stubs.output + classpath
+}

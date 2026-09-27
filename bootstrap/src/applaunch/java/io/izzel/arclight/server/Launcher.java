@@ -17,7 +17,7 @@ public class Launcher {
     public static void main(String[] args) throws Throwable {
         int javaVersion = (int) Float.parseFloat(System.getProperty("java.class.version"));
         if (javaVersion < MIN_CLASS_VERSION) {
-            System.err.println("Arclight requires Java " + MIN_JAVA_VERSION);
+            System.err.println("Fusion Core requires Java " + MIN_JAVA_VERSION); // Fusion Core: branding
             System.err.println("Current: " + System.getProperty("java.version"));
             System.exit(-1);
             return;

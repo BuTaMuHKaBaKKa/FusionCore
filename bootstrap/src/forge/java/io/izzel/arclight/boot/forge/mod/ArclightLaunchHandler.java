@@ -9,7 +9,7 @@ import java.util.List;
 public class ArclightLaunchHandler extends CommonLaunchHandler {
 
     public ArclightLaunchHandler() {
-        super(CommonLaunchHandler.SERVER, "arclight_");
+        super(CommonLaunchHandler.SERVER, "fusioncore_");
     }
 
     @Override

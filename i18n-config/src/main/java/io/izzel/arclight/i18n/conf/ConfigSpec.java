@@ -27,6 +27,12 @@ public class ConfigSpec {
     @Setting("experimental")
     private ExperimentalSpec experimentalSpec;
 
+    @Setting("lootables")
+    private LootablesSpec lootablesSpec;
+
+    @Setting("machines")
+    private MachinesSpec machinesSpec;
+
     public int getVersion() {
         return version;
     }
@@ -53,5 +59,13 @@ public class ConfigSpec {
 
     public ExperimentalSpec getExperimental() {
         return experimentalSpec;
+    }
+
+    public LootablesSpec getLootables() {
+        return lootablesSpec;
+    }
+
+    public MachinesSpec getMachines() {
+        return machinesSpec;
     }
 }

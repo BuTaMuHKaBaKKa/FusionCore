@@ -1,0 +1,32 @@
+// Fusion Core: Paper API 1.21.1 as published in paper-api sources; only the jspecify annotations are swapped for JetBrains ones.
+package io.papermc.paper.registry.tag;
+
+import io.papermc.paper.registry.RegistryKey;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.key.Keyed;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Contract;
+
+@ApiStatus.Experimental
+public sealed interface TagKey<T> extends Keyed permits TagKeyImpl {
+
+    /**
+     * Creates a new tag key for a registry.
+     *
+     * @param registryKey the registry for the tag
+     * @param key the specific key for the tag
+     * @return a new tag key
+     * @param <T> the registry value type
+     */
+    @Contract(value = "_, _ -> new", pure = true)
+    static <T> TagKey<T> create(final RegistryKey<T> registryKey, final Key key) {
+        return new TagKeyImpl<>(registryKey, key);
+    }
+
+    /**
+     * Get the registry key for this tag key.
+     *
+     * @return the registry key
+     */
+    RegistryKey<T> registryKey();
+}

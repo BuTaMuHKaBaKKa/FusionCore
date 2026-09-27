@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[2,)"
+license="GNU GENERAL PUBLIC LICENSE Version 3"
+
+[[mods]]
+modId="arclight"
+version="${version}"
+displayName="Fusion Core"
+displayTest="IGNORE_SERVER_VERSION"
+credits="lona,夜幕"
+authors="Fusion Core contributors; upstream: IzzelAliz and Arclight contributors"
+description='''
+    Fusion Core: NeoForge with Bukkit/Spigot plugins, based on Arclight.
+    '''
+
+[[accessTransformers]]
+file="META-INF/accesstransformer.cfg"
+
+# Fusion Core: Lithium/Radium mixin overrides.
+# mixin.ai.poi.fast_portals - overwrites PortalForcer.findClosestPortalPosition, where Arclight
+#                             applies the Bukkit portal search radius.
+# Mechanism: https://github.com/CaffeineMC/lithium/wiki
+["lithium:options"]
+"mixin.ai.poi.fast_portals" = false

@@ -8,13 +8,20 @@ import java.util.stream.Collectors;
 public class Mirrors {
 
     private static final String[] MAVEN_REPO = {
-        "https://arclight.hypertention.cn/",
-        "https://repo.spongepowered.org/maven/"
+        "https://repo.maven.apache.org/maven2/",
+        "https://maven.neoforged.net/releases/",
+        "https://maven.minecraftforge.net/",
+        "https://repo.spongepowered.org/repository/maven-public/",
+        "https://arclight.hypertention.cn/"
     };
 
+    // Fusion Core: official endpoint first; the third-party mirror is only a fallback.
+    private static final String MOJANG_OFFICIAL = "https://piston-meta.mojang.com";
+    private static final String MOJANG_THIRD_PARTY = "https://mojmirror.hypertention.cn";
+
     private static final String[] MOJANG_MIRROR = {
-        "https://mojmirror.hypertention.cn",
-        "https://piston-meta.mojang.com"
+        MOJANG_OFFICIAL,
+        MOJANG_THIRD_PARTY
     };
 
     private static final String VERSION_MANIFEST = "%s/mc/game/version_manifest.json";
@@ -29,7 +36,7 @@ public class Mirrors {
     }
 
     public static String mapMojangMirror(String url, String mirror) {
-        if (mirror.equals(MOJANG_MIRROR[MOJANG_MIRROR.length - 1])) {
+        if (mirror.equals(MOJANG_OFFICIAL)) {
             return url;
         }
         return url.replace("https://launcher.mojang.com", mirror)
@@ -39,6 +46,6 @@ public class Mirrors {
     }
 
     public static boolean isMirrorUrl(String url) {
-        return url.startsWith(MOJANG_MIRROR[0]);
+        return url.startsWith(MOJANG_THIRD_PARTY);
     }
 }

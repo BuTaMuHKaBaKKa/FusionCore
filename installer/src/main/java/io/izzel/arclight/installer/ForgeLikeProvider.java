@@ -46,7 +46,7 @@ public class ForgeLikeProvider {
     static Path stripDownloadMapping(Path installer, Consumer<String> logger) {
         try {
             logger.accept("Processing forge installer...");
-            var path = Paths.get(".arclight", "installer_stripped.jar");
+            var path = Paths.get(".fusioncore", "installer_stripped.jar");
             if (!Files.isDirectory(path.getParent())) {
                 Files.createDirectories(path.getParent());
             }

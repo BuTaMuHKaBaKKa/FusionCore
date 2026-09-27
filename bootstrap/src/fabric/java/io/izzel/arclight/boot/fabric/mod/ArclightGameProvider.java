@@ -20,7 +20,7 @@ public class ArclightGameProvider extends MinecraftGameProvider {
     public void initialize(FabricLauncher launcher) {
         System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
         System.setProperty("log4j.jul.LoggerAdapter", "io.izzel.arclight.boot.log.ArclightLoggerAdapter");
-        System.setProperty("log4j.configurationFile", "arclight-log4j2.xml");
+        System.setProperty("log4j.configurationFile", "fusioncore-log4j2.xml");
         try {
             this.modFile = this.extract();
             launcher.addToClassPath(modFile);
@@ -58,7 +58,7 @@ public class ArclightGameProvider extends MinecraftGameProvider {
         var version = getArclightVersion();
         System.setProperty("arclight.version", version);
         var path = getClass().getModule().getResourceAsStream("/common.jar");
-        var dir = Paths.get(".arclight", "mod_file");
+        var dir = Paths.get(".fusioncore", "mod_file");
         if (!Files.exists(dir)) {
             Files.createDirectories(dir);
         }
@@ -97,7 +97,7 @@ public class ArclightGameProvider extends MinecraftGameProvider {
     @Override
     public String getRawGameVersion() {
         try {
-            return super.getRawGameVersion() + " Arclight " + getArclightVersion();
+            return super.getRawGameVersion() + " Fusion Core " + getArclightVersion();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

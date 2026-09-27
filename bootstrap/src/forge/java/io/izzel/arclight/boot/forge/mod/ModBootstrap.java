@@ -46,14 +46,14 @@ public class ModBootstrap implements AbstractBootstrap {
         if (plugin.isPresent()) {
             return;
         }
-        var logger = LogManager.getLogger("Arclight");
+        var logger = LogManager.getLogger("Fusion Core");
         var marker = MarkerManager.getMarker("INSTALL");
         try {
             var paths = MinecraftProvider.modInstall(s -> logger.info(marker, s));
             load(paths.toArray(new Path[0]));
             new ModBootstrap().inject();
         } catch (Throwable e) {
-            logger.error("Error bootstrap Arclight", e);
+            logger.error("Error bootstrapping Fusion Core", e);
             throw new RuntimeException(e);
         }
     }

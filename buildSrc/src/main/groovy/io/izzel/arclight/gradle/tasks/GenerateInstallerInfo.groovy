@@ -14,7 +14,7 @@ import java.nio.file.Files
 class GenerateInstallerInfo extends DefaultTask {
 
     private String minecraftVersion, forgeVersion, neoforgeVersion, fabricLoaderVersion
-    private Configuration configuration, fabricExtra
+    private Configuration configuration, fabricExtra, neoforgeExtra
 
     @Classpath
     Configuration getConfiguration() {
@@ -32,6 +32,15 @@ class GenerateInstallerInfo extends DefaultTask {
 
     void setFabricExtra(Configuration fabricExtra) {
         this.fabricExtra = fabricExtra
+    }
+
+    @Classpath
+    Configuration getNeoforgeExtra() {
+        return neoforgeExtra
+    }
+
+    void setNeoforgeExtra(Configuration neoforgeExtra) {
+        this.neoforgeExtra = neoforgeExtra
     }
 
     @Input
@@ -92,6 +101,7 @@ class GenerateInstallerInfo extends DefaultTask {
     void run() {
         def libs = configurationDeps(this.configuration)
         def fabricLibs = configurationDeps(this.fabricExtra)
+        def neoforgeLibs = configurationDeps(this.neoforgeExtra)
         def artifacts = { List<String> arts ->
             def ret = new HashMap<String, String>()
             def cfg = project.configurations.create("art_rev_" + System.currentTimeMillis())
@@ -139,7 +149,8 @@ class GenerateInstallerInfo extends DefaultTask {
                         fabricLoaderHash: Utils.sha1(tmpFabric.toFile()),
                 ],
                 libraries  : artifacts(libs),
-                fabricExtra: artifacts(fabricLibs)
+                fabricExtra: artifacts(fabricLibs),
+                neoforgeExtra: artifacts(neoforgeLibs)
         ]
         outputs.files.singleFile.text = JsonOutput.toJson(output)
     }

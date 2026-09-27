@@ -6,7 +6,7 @@ public class ArclightLaunchHandler extends NeoForgeServerLaunchHandler {
 
     @Override
     public String name() {
-        return "arclightserver";
+        return "fusioncoreserver";
     }
 
     @Override

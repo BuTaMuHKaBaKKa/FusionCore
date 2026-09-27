@@ -7,15 +7,15 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'arclight'
+rootProject.name = 'Fusion Core'
 
 include 'installer'
 include 'i18n-config'
 
-include 'arclight-common'
+include 'fusioncore-common'
 
-include 'arclight-forge'
-include 'arclight-neoforge'
-include 'arclight-fabric'
+include 'fusioncore-forge'
+include 'fusioncore-neoforge'
+include 'fusioncore-fabric'
 
 include 'bootstrap'

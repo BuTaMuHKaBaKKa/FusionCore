@@ -67,12 +67,12 @@ public class ArclightLocator_Forge implements IModLocator {
         try {
             var version = System.getProperty("arclight.version");
             if (version == null) {
-                throw new IllegalStateException("Arclight bootloader is not initialized");
+                throw new IllegalStateException("Fusion Core bootloader is not initialized");
             }
             var cl = forName("net.minecraftforge.fml.loading.moddiscovery.ModFile");
             var lookup = MethodHandles.lookup();
             var handle = lookup.findConstructor(cl, MethodType.methodType(void.class, SecureJar.class, IModProvider.class, ModFileFactory.ModFileInfoParser.class));
-            var path = Paths.get(".arclight", "mod_file", version + ".jar");
+            var path = Paths.get(".fusioncore", "mod_file", version + ".jar");
             var parserCl = forName("net.minecraftforge.fml.loading.moddiscovery.ModFileParser");
             var modsToml = lookup.findStatic(parserCl, "modsTomlParser", MethodType.methodType(IModFileInfo.class, IModFile.class));
             ModFileFactory.ModFileInfoParser parser = modFile -> {

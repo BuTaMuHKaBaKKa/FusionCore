@@ -44,17 +44,38 @@ public class ArclightConfig {
     }
 
     private static void load() throws Exception {
-        Path path = Paths.get("arclight.conf");
+        Path path = FusionCoreFiles.config();
         CommentedConfigurationNode node = HoconConfigurationLoader.builder().setSource(
-            () -> new BufferedReader(new InputStreamReader(ArclightConfig.class.getResourceAsStream("/META-INF/arclight.conf"), StandardCharsets.UTF_8))
+            () -> new BufferedReader(new InputStreamReader(ArclightConfig.class.getResourceAsStream("/META-INF/fusioncore.conf"), StandardCharsets.UTF_8))
         ).build().load();
+        boolean fresh = !java.nio.file.Files.exists(path) && isNewServer();
         HoconConfigurationLoader loader = HoconConfigurationLoader.builder().setPath(path).build();
         CommentedConfigurationNode cur = loader.load();
+        if (fresh) {
+            // Fusion Core: a new server (no config file and no world yet) gets CraftBukkit/Paper world names (world_nether, world_the_end),
+            // which plugins and their configs expect; existing servers keep the names their plugin data is stored under
+            cur.getNode("compatibility", "symlink-world").setValue(true);
+        }
         cur.mergeValuesFrom(node);
         cur.getNode("locale", "current").setValue(ArclightLocale.getInstance().getCurrent());
         fillComments(cur, ArclightLocale.getInstance());
         instance = new ArclightConfig(cur);
         loader.save(cur);
+    }
+
+    private static boolean isNewServer() {
+        String levelName = "world";
+        Path properties = Paths.get("server.properties");
+        if (java.nio.file.Files.exists(properties)) {
+            java.util.Properties p = new java.util.Properties();
+            try (var reader = java.nio.file.Files.newBufferedReader(properties, StandardCharsets.UTF_8)) {
+                p.load(reader);
+                levelName = p.getProperty("level-name", levelName);
+            } catch (Exception e) {
+                return false;
+            }
+        }
+        return !java.nio.file.Files.exists(Paths.get(levelName));
     }
 
     private static void fillComments(CommentedConfigurationNode node, ArclightLocale locale) {

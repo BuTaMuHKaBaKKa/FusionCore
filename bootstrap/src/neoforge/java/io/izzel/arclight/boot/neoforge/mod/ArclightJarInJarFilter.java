@@ -12,7 +12,7 @@ import java.util.List;
 
 public class ArclightJarInJarFilter implements IDependencyLocator, IOrderedProvider {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("ArclightJiJ");
+    private static final Logger LOGGER = LoggerFactory.getLogger("FusionCoreJiJ");
 
     @SuppressWarnings("unchecked")
     @Override
@@ -23,7 +23,7 @@ public class ArclightJarInJarFilter implements IDependencyLocator, IOrderedProvi
             var loadedFiles = (List<ModFile>) field.get(pipeline);
             loadedFiles.removeIf(it -> {
                 var optional = getClass().getModule().getLayer().findModule(it.getModFileInfo().moduleName());
-                optional.ifPresent(module -> LOGGER.info("Skip jij dependency {}@{} because Arclight has {}",
+                optional.ifPresent(module -> LOGGER.info("Skip jij dependency {}@{} because Fusion Core has {}",
                     it.getModFileInfo().moduleName(), it.getModFileInfo().versionString(), module.getDescriptor().toNameAndVersion()));
                 return optional.isPresent();
             });

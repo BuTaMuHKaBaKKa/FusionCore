@@ -5,7 +5,6 @@ import com.google.gson.reflect.TypeToken;
 import io.izzel.arclight.api.ArclightPlatform;
 import io.izzel.arclight.api.ArclightVersion;
 import io.izzel.arclight.api.Unsafe;
-import io.izzel.arclight.i18n.ArclightLocale;
 import org.apache.logging.log4j.LogManager;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -13,15 +12,18 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 
 public interface AbstractBootstrap {
 
@@ -105,23 +107,73 @@ public interface AbstractBootstrap {
                 extract(getClass().getModule().getResourceAsStream("/common.jar"), version);
             }
             String buildTime = attributes.getValue("Implementation-Timestamp");
-            LogManager.getLogger("Arclight").info(ArclightLocale.getInstance().get("logo"),
-                    ArclightLocale.getInstance().get("release-name." + ArclightVersion.current().getReleaseName()), version, buildTime);
+            // Fusion Core: plain branded banner instead of the Arclight logo
+            var logger = LogManager.getLogger("Fusion Core");
+            logger.info("Fusion Core {} | Bukkit/Spigot/Paper on {}", version, platform);
+            logger.info("Built at {}", buildTime);
         }
     }
 
+    /**
+     * Fusion Core: rewrites the extracted jar only when its content differs (via a temp file and a move);
+     * cleanup failures are logged, not fatal.
+     */
     private void extract(InputStream path, String version) throws Exception {
         System.setProperty("arclight.version", version);
-        var dir = Paths.get(".arclight", "mod_file");
+        var dir = Paths.get(".fusioncore", "mod_file");
         if (!Files.exists(dir)) {
             Files.createDirectories(dir);
         }
         var mod = dir.resolve(version + ".jar");
-        if (!Files.exists(mod) || Boolean.getBoolean("arclight.alwaysExtract")) {
-            for (Path old : Files.list(dir).collect(Collectors.toList())) {
-                Files.delete(old);
+        byte[] content;
+        try (path) {
+            content = path.readAllBytes();
+        }
+        var logger = LogManager.getLogger("Fusion Core");
+        if (Files.exists(mod) && !Boolean.getBoolean("arclight.alwaysExtract")
+            && Arrays.equals(content, Files.readAllBytes(mod))) {
+            removeStaleCopies(dir, mod, logger);
+            return;
+        }
+        Path temporary = Files.createTempFile(dir, "fusioncore-", ".tmp");
+        try {
+            Files.write(temporary, content);
+            try {
+                Files.move(temporary, mod, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, mod, StandardCopyOption.REPLACE_EXISTING);
             }
-            Files.copy(path, mod);
+        } catch (IOException e) {
+            if (!Files.exists(mod)) {
+                throw e;
+            }
+            logger.warn("Could not replace {}, starting with the copy already on disk; restart once nothing holds it open", mod, e);
+        } finally {
+            try {
+                Files.deleteIfExists(temporary);
+            } catch (IOException e) {
+                logger.warn("Could not delete temporary file {}; it is safe to remove by hand", temporary);
+            }
+        }
+        removeStaleCopies(dir, mod, logger);
+    }
+
+    /** Fusion Core: removes jars of older builds and leftover temp files. Best effort. */
+    private static void removeStaleCopies(Path dir, Path current, org.apache.logging.log4j.Logger logger) {
+        try (var files = Files.list(dir)) {
+            for (Path file : files.toList()) {
+                String name = file.getFileName().toString();
+                boolean stale = name.endsWith(".jar") || (name.startsWith("fusioncore-") && name.endsWith(".tmp"));
+                if (stale && !file.equals(current)) {
+                    try {
+                        Files.deleteIfExists(file);
+                    } catch (IOException e) {
+                        logger.debug("Could not remove stale {}", file, e);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            logger.debug("Could not list {}", dir, e);
         }
     }
 }

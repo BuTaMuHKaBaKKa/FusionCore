@@ -1,0 +1,27 @@
+Fusion Core 0.2.1 for Minecraft Java Edition 1.21.1 / NeoForge 21.1.250
+
+Fusion Core is a modified distribution of Arclight, not an independent clean-room
+implementation of NeoForge/Bukkit interoperability.
+
+Upstream: https://github.com/IzzelAliz/Arclight
+Branch: FeudalKings
+Commit: d27101f1fd155528ca29baf41b70f91beb3e0187
+Arclight and Fusion Core source code: GNU General Public License, version 3.
+See LICENSE for the license text and FUSIONCORE-CHANGES.md for the modifications.
+
+Corresponding source: the exact Fusion Core commit of a build is the part after "+" in
+the jar's Implementation-Version (e.g. fusioncore-neoforge-1.21.1-0.2.1+74bcdc1). If you
+give this jar to anyone else, GPL-3.0 section 6 requires you to provide the source of
+that commit with it, or a written offer to do so; a public repository link is enough.
+
+Minecraft, NeoForge, Bukkit/Spigot and all bundled/downloaded libraries retain
+their respective copyrights and licenses. Minecraft binaries are downloaded by
+the installer from upstream; agreement to the Minecraft EULA is required to run
+the server. This package does not set eula.txt for you.
+
+This package does not include a Java runtime or third-party plugins. The
+launchers locate an existing Java 21 installation. If you reuse a bundled
+runtime from an earlier package, retain its runtime/legal licenses and
+runtime/release version details.
+
+Fusion Core is not an official product of Mojang, Microsoft, NeoForged or Arclight.

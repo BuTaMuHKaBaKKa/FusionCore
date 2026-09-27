@@ -25,9 +25,14 @@ public class MinecraftProvider {
     }
 
     public static List<Path> modInstall(Consumer<String> logger) throws Throwable {
+        return modInstall(logger, false);
+    }
+
+    public static List<Path> modInstall(Consumer<String> logger, boolean neoforge) throws Throwable {
         InputStream stream = ForgeInstaller.class.getModule().getResourceAsStream("/META-INF/installer.json");
         InstallInfo installInfo = new Gson().fromJson(new InputStreamReader(stream), InstallInfo.class);
-        List<Supplier<Path>> suppliers = checkMavenNoSource(installInfo.libraries);
+        var libraries = neoforge ? installInfo.neoforgeDeps() : installInfo.libraries;
+        List<Supplier<Path>> suppliers = checkMavenNoSource(libraries);
         if (!suppliers.isEmpty()) {
             logger.accept("Downloading missing libraries ...");
             ExecutorService pool = Executors.newFixedThreadPool(8);
@@ -35,7 +40,7 @@ public class MinecraftProvider {
             handleFutures(logger, array);
             pool.shutdownNow();
         }
-        return installInfo.libraries.keySet().stream().map(it -> Paths.get("libraries").resolve(Util.mavenToPath(it))).collect(Collectors.toList());
+        return libraries.keySet().stream().map(it -> Paths.get("libraries").resolve(Util.mavenToPath(it))).collect(Collectors.toList());
     }
 
     static CompletableFuture<MinecraftData> downloadMinecraftData(InstallInfo info, ExecutorService pool, Consumer<String> logger) {

@@ -1,5 +1,4 @@
 import io.izzel.arclight.gradle.ArclightGradlePlugin
-import io.izzel.arclight.gradle.tasks.UploadFilesTask
 
 plugins {
     id 'architectury-plugin' version '3.4-SNAPSHOT' apply false
@@ -11,9 +10,10 @@ allprojects {
     apply plugin: 'java'
 
     group 'io.izzel.arclight'
-    version '1.0.2-SNAPSHOT'
+    version '0.2.1'
 
     def getGitHash = { ->
+        if (!rootProject.file('.git').exists()) return 'source'
         def stdout = new ByteArrayOutputStream()
         exec {
             commandLine 'git', 'rev-parse', '--short', 'HEAD'
@@ -24,12 +24,13 @@ allprojects {
 
     ext {
         versionName = 'feudal-kings'
+        fusionCoreUpstream = 'Arclight FeudalKings (d27101f1fd155528ca29baf41b70f91beb3e0187)'
         gitHash = getGitHash()
         supportedPlatforms = ['forge', 'neoforge', 'fabric']
-        commonProject = project(':arclight-common')
-        forgeProject = project(':arclight-forge')
-        fabricProject = project(':arclight-fabric')
-        neoForgeProject = project(':arclight-neoforge')
+        commonProject = project(':fusioncore-common')
+        forgeProject = project(':fusioncore-forge')
+        fabricProject = project(':fusioncore-fabric')
+        neoForgeProject = project(':fusioncore-neoforge')
         platformProjects = [ext.forgeProject, ext.fabricProject, ext.neoForgeProject]
         subProjects = ext.platformProjects + [ext.commonProject]
         generatedSpigot = "io.izzel.arclight.generated:spigot:${libs.versions.minecraft.get()}:deobf"
@@ -42,13 +43,18 @@ allprojects {
     }
 
     repositories {
-        maven { url = 'https://repo.spongepowered.org/maven' }
-        maven { url = 'https://oss.sonatype.org/content/repositories/snapshots/' }
-        maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
-        maven { url = 'https://maven.neoforged.net/releases' }
-        maven { url = 'https://files.minecraftforge.net/maven/' }
-        maven { url = 'https://maven.izzel.io/releases' }
+        // Order matters: Gradle tries these in turn and a repository that times out
+        // aborts the whole resolution rather than falling through to the next one.
+        // Maven Central is first because it serves most of what is needed (including
+        // me.lucko:fabric-permissions-api), and maven.fabricmc.net is listed so the
+        // Fabric artifacts come from their own host instead of a proxying mirror.
         mavenCentral()
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.neoforged.net/releases' }
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+        maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+        maven { url = 'https://maven.izzel.io/releases' }
+        maven { url = 'https://files.minecraftforge.net/maven/' }
         mavenLocal()
     }
 
@@ -130,9 +136,10 @@ rootProject.ext.platformProjects.each { Project p ->
 
         jar {
             manifest.attributes 'MixinConnector': 'io.izzel.arclight.common.mod.ArclightConnector'
-            manifest.attributes 'Implementation-Title': 'Arclight'
-            manifest.attributes 'Implementation-Version': "${p.name}-${libs.versions.minecraft.get()}-${project.version}+$gitHash"
-            manifest.attributes 'Implementation-Vendor': 'Arclight Team'
+            manifest.attributes 'Implementation-Title': 'Fusion Core'
+            manifest.attributes 'Implementation-Version': "fusioncore-${p.name.replace('fusioncore-', '')}-${libs.versions.minecraft.get()}-${project.version}+$gitHash"
+            manifest.attributes 'Implementation-Vendor': 'Fusion Core contributors; based on Arclight'
+            manifest.attributes 'FusionCore-Upstream': rootProject.ext.fusionCoreUpstream
             manifest.attributes 'Implementation-Timestamp': new Date().format("yyyy-MM-dd HH:mm:ss")
         }
 
@@ -153,21 +160,3 @@ tasks.register('collect', Copy) {
     from project(':bootstrap').tasks.fabricJar.outputs
 }
 
-def gitBranch() {
-    def stdout = new ByteArrayOutputStream()
-    exec {
-        commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'
-        standardOutput = stdout
-    }
-    return stdout.toString().trim()
-}
-
-tasks.register('uploadFiles', UploadFilesTask) {
-    mcVersion.set libs.versions.minecraft
-    version.set "${project.version}-${project.ext.gitHash}"
-    snapshot.set project.version.toString().endsWith('-SNAPSHOT')
-    gitHash.set project.ext.gitHash
-    branch.set gitBranch()
-    inputs.files tasks.collect.outputs.files
-    dependsOn(tasks.collect)
-}
