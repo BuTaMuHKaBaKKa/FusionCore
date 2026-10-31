@@ -74,7 +74,12 @@ public final class PaperSchedulers {
     public static void retire(Entity entity) {
         CraftEntity craft = ((EntityBridge) entity).bridge$getBukkitEntityRaw();
         if (craft != null) {
-            EntityTaskScheduler scheduler = ((CraftEntitySchedulerBridge) craft).fusioncore$taskSchedulerIfCreated();
+            // the lock the scheduler is created under (CraftEntityMixin): a creation that read "not removed" has published
+            // its scheduler before this looks; one that starts later sees the removal reason and starts retired
+            EntityTaskScheduler scheduler;
+            synchronized (craft) {
+                scheduler = ((CraftEntitySchedulerBridge) craft).fusioncore$taskSchedulerIfCreated();
+            }
             if (scheduler != null) {
                 scheduler.retire();
             }

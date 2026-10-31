@@ -10,7 +10,7 @@ allprojects {
     apply plugin: 'java'
 
     group 'io.izzel.arclight'
-    version '0.2.1'
+    version '1.0'
 
     def getGitHash = { ->
         if (!rootProject.file('.git').exists()) return 'source'

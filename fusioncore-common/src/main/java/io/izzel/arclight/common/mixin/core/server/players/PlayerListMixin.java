@@ -226,6 +226,12 @@ public abstract class PlayerListMixin implements PlayerListBridge {
         ((ServerPlayerBridge) player).bridge$setSentListPacket(true);
     }
 
+    /** Fusion Core: Purpur's /tpsbar comes back for a player who had it on. */
+    @Inject(method = "placeNewPlayer", at = @At("RETURN"))
+    private void fusioncore$tpsBarOnJoin(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo ci) {
+        io.izzel.arclight.common.mod.util.FusionCoreTpsBar.onJoin(((ServerPlayerBridge) player).bridge$getBukkitEntity());
+    }
+
     @Redirect(method = "placeNewPlayer", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;addNewPlayer(Lnet/minecraft/server/level/ServerPlayer;)V"))
     private void arclight$addNewPlayer(ServerLevel instance, ServerPlayer player) {
         if (player.level() == instance && !instance.players().contains(player)) {

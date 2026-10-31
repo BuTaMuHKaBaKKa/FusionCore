@@ -47,7 +47,19 @@ public abstract class DistanceManagerMixin implements DistanceManagerBridge {
         }
     }
 
-    @Decorate(method = "removePlayer", at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;get(J)Ljava/lang/Object;"))
+    // Fusion Core: chunk load/unload events run after all ticket level changes are applied, not in the middle of them
+    @com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod(method = "runAllUpdates")
+    private boolean fusioncore$eventsAfterUpdates(ChunkMap map, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Boolean> original) {
+        var executor = ((io.izzel.arclight.common.bridge.core.server.level.ChunkMapBridge) map).bridge$getCallbackExecutor();
+        executor.hold();
+        try {
+            return original.call(map);
+        } finally {
+            executor.release();
+        }
+    }
+
+    @Decorate(method = "removePlayer",at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;get(J)Ljava/lang/Object;"))
     private Object arclight$nullsafeRemovePlayer(Long2ObjectMap<ServerPlayer> instance, long l) throws Throwable {
         Object set = DecorationOps.callsite().invoke(instance, l);
         if (set == null) {

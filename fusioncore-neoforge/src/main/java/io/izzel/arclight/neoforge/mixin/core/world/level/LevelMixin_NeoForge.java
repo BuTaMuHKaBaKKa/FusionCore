@@ -37,7 +37,8 @@ public abstract class LevelMixin_NeoForge implements WorldBridge {
     @Inject(method = "markAndNotifyBlock", cancellable = true, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/state/BlockState;updateNeighbourShapes(Lnet/minecraft/world/level/LevelAccessor;Lnet/minecraft/core/BlockPos;II)V"))
     private void arclight$callBlockPhysics(BlockPos pos, LevelChunk chunk, BlockState blockstate, BlockState state, int flags, int recursionLeft, CallbackInfo ci) {
         try {
-            if (this.bridge$getWorld() != null) {
+            // Fusion Core: no listener, no Bukkit block, data and event for every block change
+            if (this.bridge$getWorld() != null && BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0) {
                 BlockPhysicsEvent event = new BlockPhysicsEvent(CraftBlock.at((LevelAccessor) this, pos), CraftBlockData.fromData(state));
                 Bukkit.getPluginManager().callEvent(event);
                 if (event.isCancelled()) {

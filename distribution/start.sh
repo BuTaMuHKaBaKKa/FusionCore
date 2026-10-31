@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 cd -- "$(dirname -- "$0")"
-FUSIONCORE_JAR=fusioncore-neoforge-1.21.1-0.2.1.jar
+FUSIONCORE_JAR=fusioncore-neoforge-1.21.1-1.0.jar
 FUSIONCORE_MEMORY="${FUSIONCORE_MEMORY:-4G}"
 # Set only the maximum heap; Java chooses the initial heap automatically.
 if [ -x runtime/bin/java ]; then
@@ -19,6 +19,6 @@ if [ ! -f "$FUSIONCORE_JAR" ]; then
     printf 'Missing %s next to start.sh.\n' "$FUSIONCORE_JAR" >&2
     exit 1
 fi
-printf 'Starting Fusion Core 0.2.1 - Minecraft 1.21.1 / NeoForge 21.1.250\n'
+printf 'Starting Fusion Core 1.0 - Minecraft 1.21.1 / NeoForge 21.1.250\n'
 printf 'Maximum Java heap: %s\n' "$FUSIONCORE_MEMORY"
 exec "$FUSIONCORE_JAVA" "-Xmx$FUSIONCORE_MEMORY" -Dfile.encoding=UTF-8 ${FUSIONCORE_JAVA_OPTS:-} -jar "$FUSIONCORE_JAR" nogui "$@"

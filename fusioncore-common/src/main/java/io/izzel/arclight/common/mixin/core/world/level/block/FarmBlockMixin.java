@@ -24,6 +24,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(FarmBlock.class)
 public abstract class FarmBlockMixin extends BlockMixin {
 
+    // Fusion Core: Paper's tick-rates.wet-farmland and tick-rates.dry-farmland
+    @Inject(method = "randomTick", cancellable = true, at = @At("HEAD"))
+    private void fusioncore$farmlandRate(BlockState state, ServerLevel level, BlockPos pos, net.minecraft.util.RandomSource random, CallbackInfo ci) {
+        var rates = io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(level).getTickRates();
+        int rate = state.getValue(FarmBlock.MOISTURE) > 0 ? rates.getWetFarmland() : rates.getDryFarmland();
+        if (io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.skipRandomTick(rate, pos)) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "turnToDirt", cancellable = true, at = @At("HEAD"))
     private static void arclight$blockFade(Entity entity, BlockState state, Level worldIn, BlockPos pos, CallbackInfo ci) {
         if (!DistValidate.isValid(worldIn)) return;

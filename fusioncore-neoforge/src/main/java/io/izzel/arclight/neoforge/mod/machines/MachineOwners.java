@@ -12,6 +12,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.TraceableEntity;
+import net.minecraft.world.entity.decoration.HangingEntity;
+import net.minecraft.world.entity.item.FallingBlockEntity;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -136,11 +143,25 @@ public final class MachineOwners {
         if (!(level instanceof ServerLevel) || !enabled() || !DistValidate.isValid(level)) {
             return false;
         }
-        String mod = modOf(entity);
+        String mod = machineModOf(entity);
         if (mod == null) {
             return false;
         }
         return push(level, null, mod, read(entity.getPersistentData()));
+    }
+
+    /**
+     * The mod id of an entity that works as a machine (a moving contraption), or {@code null}. Projectiles, mobs, items,
+     * falling blocks and other entities with their own Bukkit events are never machines: a shell fired by a cannon must not
+     * break blocks as the cannon's owner.
+     */
+    public static String machineModOf(Entity entity) {
+        if (entity instanceof Projectile || entity instanceof TraceableEntity || entity instanceof LivingEntity
+            || entity instanceof ItemEntity || entity instanceof FallingBlockEntity || entity instanceof ExperienceOrb
+            || entity instanceof HangingEntity) {
+            return null;
+        }
+        return modOf(entity);
     }
 
     private static boolean push(Level level, BlockPos pos, String mod, Owner owner) {
@@ -191,7 +212,10 @@ public final class MachineOwners {
 
     private static int suspended;
 
-    /** Checks are off while a mod moves blocks it has already checked as a whole (Create's contraption assembly) */
+    /**
+     * Checks are off while a mod moves blocks it has already checked as a whole (Create's contraption assembly), and while
+     * an explosion breaks blocks (it has its own Bukkit explode events)
+     */
     public static void suspend() {
         suspended++;
     }
@@ -259,7 +283,11 @@ public final class MachineOwners {
         if (oldEmpty && isEmpty(state)) {
             return true;
         }
-        return oldEmpty ? firePlace(ctx, level, pos, state) : fireBreak(ctx, level, pos);
+        if (oldEmpty) {
+            return firePlace(ctx, level, pos, state);
+        }
+        // one block replaced by another: it is broken, and the new one placed
+        return fireBreak(ctx, level, pos) && (isEmpty(state) || firePlace(ctx, level, pos, state));
     }
 
     private static boolean isEmpty(BlockState state) {
@@ -295,8 +323,10 @@ public final class MachineOwners {
         context = null;
         try {
             CraftBlock block = CraftBlock.at(level, pos);
+            // the placed block shows the new state; the replaced state is what the world holds now
+            CraftBlock placed = new PendingPlaceBlock(level, pos, state);
             var item = CraftItemStack.asBukkitCopy(new net.minecraft.world.item.ItemStack(state.getBlock().asItem()));
-            BlockPlaceEvent event = new BlockPlaceEvent(block, block.getState(), block, item, player(ctx.owner(), level), true, EquipmentSlot.HAND);
+            BlockPlaceEvent event = new BlockPlaceEvent(placed, block.getState(), block, item, player(ctx.owner(), level), true, EquipmentSlot.HAND);
             Bukkit.getPluginManager().callEvent(event);
             return !event.isCancelled() && event.canBuild();
         } finally {

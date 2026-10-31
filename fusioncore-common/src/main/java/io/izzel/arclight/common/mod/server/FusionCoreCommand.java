@@ -42,6 +42,7 @@ public final class FusionCoreCommand extends Command {
         }
         server.getCommandMap().register("fusioncore", new FusionCoreCommand());
         io.izzel.arclight.common.mod.util.FusionCoreAdventureProviders.registerCommands(server); // Paper's /callback
+        io.izzel.arclight.common.mod.util.FusionCoreTpsBar.register(server); // Purpur's /tpsbar
     }
 
     private static String version() {

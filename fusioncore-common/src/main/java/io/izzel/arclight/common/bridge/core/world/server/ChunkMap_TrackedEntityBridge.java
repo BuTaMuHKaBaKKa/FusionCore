@@ -13,4 +13,10 @@ public interface ChunkMap_TrackedEntityBridge {
     SectionPos bridge$getLastSectionPos();
 
     void bridge$setLastSectionPos(SectionPos pos);
+
+    /** Fusion Core: the connections that see the entity now */
+    java.util.Set<net.minecraft.server.network.ServerPlayerConnection> fusioncore$seenBy();
+
+    /** Fusion Core: vanilla's getEffectiveRange (the largest tracking range of the entity and its passengers) */
+    int fusioncore$effectiveRange();
 }

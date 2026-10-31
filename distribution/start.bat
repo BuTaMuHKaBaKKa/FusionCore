@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-set "FUSIONCORE_JAR=fusioncore-neoforge-1.21.1-0.2.1.jar"
+set "FUSIONCORE_JAR=fusioncore-neoforge-1.21.1-1.0.jar"
 set "FUSIONCORE_EXIT=1"
 if not defined FUSIONCORE_MEMORY set "FUSIONCORE_MEMORY=4G"
 set "FUSIONCORE_JAVA_FOUND="
@@ -20,7 +20,7 @@ if not exist "%FUSIONCORE_JAR%" (
     echo Missing %FUSIONCORE_JAR% next to start.bat.
     goto finish
 )
-echo Starting Fusion Core 0.2.1 - Minecraft 1.21.1 / NeoForge 21.1.250
+echo Starting Fusion Core 1.0 - Minecraft 1.21.1 / NeoForge 21.1.250
 echo Java: "%FUSIONCORE_JAVA_FOUND%"
 echo Maximum Java heap: %FUSIONCORE_MEMORY%
 "%FUSIONCORE_JAVA_FOUND%" "-Xmx%FUSIONCORE_MEMORY%" -Dfile.encoding=UTF-8 %FUSIONCORE_JAVA_OPTS% -jar "%FUSIONCORE_JAR%" nogui %*

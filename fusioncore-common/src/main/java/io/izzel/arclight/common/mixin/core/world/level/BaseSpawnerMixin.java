@@ -37,6 +37,44 @@ public abstract class BaseSpawnerMixin implements BaseSpawnerBridge {
     @Shadow public int spawnCount;
     // @formatter:on
 
+    // Fusion Core: Paper's tick-rates.mob-spawner, a spawner runs every that many ticks and counts its delay down by as
+    // much; -1 stops spawners
+    @Shadow public int spawnDelay;
+    private int fusioncore$tickDelay;
+
+    @Inject(method = "serverTick", cancellable = true, at = @At("HEAD"))
+    private void fusioncore$tickRate(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos, CallbackInfo ci) {
+        int rate = io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(level).getTickRates().getMobSpawner();
+        if (rate == 1) {
+            return;
+        }
+        if (this.spawnDelay > 0 && --this.fusioncore$tickDelay > 0) {
+            ci.cancel();
+            return;
+        }
+        this.fusioncore$tickDelay = rate;
+        if (rate == -1) {
+            ci.cancel();
+        }
+    }
+
+    @com.llamalad7.mixinextras.injector.ModifyExpressionValue(method = "serverTick", at = @At(value = "FIELD", ordinal = 0, opcode = org.objectweb.asm.Opcodes.GETFIELD, target = "Lnet/minecraft/world/level/BaseSpawner;spawnDelay:I"))
+    private int fusioncore$resetDelay(int delay, @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) net.minecraft.server.level.ServerLevel level) {
+        int rate = io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(level).getTickRates().getMobSpawner();
+        if (rate <= 1) {
+            return delay;
+        }
+        // Paper: with the delay counted down by the rate, any value below -rate means "pick a new delay"
+        return delay < -rate ? -1 : (delay == -1 ? 0 : delay);
+    }
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "serverTick", at = @At(value = "FIELD", opcode = org.objectweb.asm.Opcodes.PUTFIELD, target = "Lnet/minecraft/world/level/BaseSpawner;spawnDelay:I"))
+    private void fusioncore$countDown(BaseSpawner spawner, int delay, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original,
+                                      @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) net.minecraft.server.level.ServerLevel level) {
+        int rate = io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(level).getTickRates().getMobSpawner();
+        original.call(spawner, rate > 1 ? delay - (rate - 1) : delay);
+    }
+
     @Inject(method = "setEntityId", at = @At("RETURN"))
     public void arclight$clearMobs(CallbackInfo ci) {
         this.spawnPotentials = SimpleWeightedRandomList.empty();

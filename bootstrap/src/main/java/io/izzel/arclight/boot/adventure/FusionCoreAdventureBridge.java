@@ -151,13 +151,14 @@ public final class FusionCoreAdventureBridge {
 
     public static final class Gson implements GsonComponentSerializer.Provider {
         @Override
+        // both also read the click and hover events of 1.21.5+ JSON (plugins with a newer Adventure), see ModernJsonGsonSerializer
         public GsonComponentSerializer gson() {
-            return GsonComponentSerializer.builder().legacyHoverEventSerializer(LEGACY_HOVER).build();
+            return new ModernJsonGsonSerializer(GsonComponentSerializer.builder().legacyHoverEventSerializer(LEGACY_HOVER).build());
         }
 
         @Override
         public GsonComponentSerializer gsonLegacy() {
-            return GsonComponentSerializer.builder().legacyHoverEventSerializer(LEGACY_HOVER).downsampleColors().build();
+            return new ModernJsonGsonSerializer(GsonComponentSerializer.builder().legacyHoverEventSerializer(LEGACY_HOVER).downsampleColors().build());
         }
 
         @Override

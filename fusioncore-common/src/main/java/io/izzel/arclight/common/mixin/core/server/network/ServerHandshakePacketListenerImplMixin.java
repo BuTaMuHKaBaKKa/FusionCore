@@ -1,12 +1,17 @@
 package io.izzel.arclight.common.mixin.core.server.network;
 
 import com.google.gson.Gson;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.properties.Property;
 import com.mojang.util.UndashedUuid;
 import io.izzel.arclight.common.bridge.core.network.ConnectionBridge;
 import io.izzel.arclight.common.mod.util.VelocitySupport;
+import net.minecraft.SharedConstants;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
 import net.minecraft.network.protocol.login.ClientboundLoginDisconnectPacket;
 import net.minecraft.server.network.ServerHandshakePacketListenerImpl;
@@ -22,6 +27,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.text.MessageFormat;
 import java.util.HashMap;
 
 @Mixin(ServerHandshakePacketListenerImpl.class)
@@ -49,6 +55,16 @@ public abstract class ServerHandshakePacketListenerImplMixin {
             java.net.InetSocketAddress.createUnresolved(nul < 0 ? host : host.substring(0, nul), packet.port()));
     }
 
+    // Fusion Core: spigot.yml messages.outdated-client/outdated-server, as Spigot (CraftBukkit patch 0017): an older protocol than
+    // the server's gets the client message, a newer one the server message; {0} is the server's game version
+    @WrapOperation(method = "beginLogin", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/Component;translatable(Ljava/lang/String;[Ljava/lang/Object;)Lnet/minecraft/network/chat/MutableComponent;"))
+    private MutableComponent fusioncore$outdatedMessage(String key, Object[] args, Operation<MutableComponent> original,
+                                                        @Local(argsOnly = true) ClientIntentionPacket packet) {
+        boolean outdatedClient = packet.protocolVersion() < SharedConstants.getCurrentVersion().getProtocolVersion();
+        String message = outdatedClient ? SpigotConfig.outdatedClientMessage : SpigotConfig.outdatedServerMessage;
+        return Component.literal(MessageFormat.format(message.replace("'", "''"), SharedConstants.getCurrentVersion().getName()));
+    }
+
     @Inject(method = "beginLogin", cancellable = true, at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/network/Connection;setupOutboundProtocol(Lnet/minecraft/network/ProtocolInfo;)V"))
     private void arclight$throttler(ClientIntentionPacket packet, boolean bl, CallbackInfo ci) {
         try {
@@ -69,7 +85,9 @@ public abstract class ServerHandshakePacketListenerImplMixin {
                 ++throttleCounter;
                 if (throttleCounter > 200) {
                     throttleCounter = 0;
-                    throttleTracker.entrySet().removeIf(entry -> entry.getValue() > connectionThrottle);
+                    // Fusion Core: drop the entries older than the throttle; Spigot compares the timestamp itself with the interval,
+                    // which is true for every entry, so the cleanup emptied the map and let a fresh reconnect through
+                    throttleTracker.entrySet().removeIf(entry -> currentTime - entry.getValue() > connectionThrottle);
                 }
             }
         } catch (Throwable t) {

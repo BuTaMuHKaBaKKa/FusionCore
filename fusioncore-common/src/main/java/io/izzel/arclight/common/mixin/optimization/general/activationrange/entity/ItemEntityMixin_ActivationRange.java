@@ -9,6 +9,9 @@ import net.minecraft.world.item.ItemStack;
 import org.bukkit.event.entity.EntityRemoveEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ItemEntity.class)
 public abstract class ItemEntityMixin_ActivationRange extends EntityMixin_ActivationRange implements ItemEntityBridge {
@@ -29,6 +32,18 @@ public abstract class ItemEntityMixin_ActivationRange extends EntityMixin_Activa
         if (this.age != -32768) this.age += elapsedTicks;
         this.lastTick = ArclightConstants.currentTick;
         this.bridge$forge$optimization$discardItemEntity();
+    }
+
+    @Override
+    public int bridge$fusioncore$despawnAge() {
+        return ((WorldBridge) this.level()).bridge$spigotConfig().itemDespawnRate;
+    }
+
+    // Fusion Core: the display copy /give drops (makeFakeItem) despawns on the next tick, as Paper's despawnRate - 1;
+    // vanilla's 5999 kept it on the ground (visible) until item-despawn-rate when that is above 6000
+    @Inject(method = "makeFakeItem", at = @At("RETURN"))
+    private void fusioncore$fakeItemDespawns(CallbackInfo ci) {
+        this.age = this.bridge$fusioncore$despawnAge() - 1;
     }
 
     @Override

@@ -27,22 +27,6 @@ public abstract class CropBlockMixin_Vanilla extends BlockMixin {
         return !CraftEventFactory.callEntityChangeBlockEvent(entity, pos, state, result);
     }
 
-    @Inject(method = "getGrowthSpeed", cancellable = true, at = @At("RETURN"))
-    private static void arclight$spigotModifier(Block block, BlockGetter blockGetter, BlockPos pos, CallbackInfoReturnable<Float> cir) {
-        if (blockGetter instanceof WorldBridge bridge) {
-            int modifier;
-            if (block == Blocks.BEETROOTS) {
-                modifier = bridge.bridge$spigotConfig().beetrootModifier;
-            } else if (block == Blocks.CARROTS) {
-                modifier = bridge.bridge$spigotConfig().carrotModifier;
-            } else if (block == Blocks.POTATOES) {
-                modifier = bridge.bridge$spigotConfig().potatoModifier;
-            } else {
-                modifier = bridge.bridge$spigotConfig().wheatModifier;
-            }
-            var f = cir.getReturnValueF();
-            f /= (100F / modifier);
-            cir.setReturnValue(f);
-        }
-    }
+    // Fusion Core: Spigot's crop growth modifiers moved to GrowthModifierMixin, on the roll of randomTick as in Spigot
+    // (scaling getGrowthSpeed also changed stems and anything else that reads it)
 }

@@ -611,6 +611,7 @@ accessible field net/minecraft/world/entity/LivingEntity effectsDirty Z
 accessible field net/minecraft/world/entity/LivingEntity lastHurtByMobTimestamp I
 accessible field net/minecraft/world/entity/LivingEntity lastHurtByPlayer Lnet/minecraft/world/entity/player/Player;
 accessible field net/minecraft/world/entity/LivingEntity activeEffects Ljava/util/Map;
+accessible field net/minecraft/world/entity/LivingEntity jumping Z
 accessible method net/minecraft/world/entity/LivingEntity detectEquipmentUpdates ()V
 accessible field net/minecraft/world/flag/FeatureFlag universe Lnet/minecraft/world/flag/FeatureFlagUniverse;
 accessible field net/minecraft/world/flag/FeatureFlag mask J
@@ -708,6 +709,8 @@ accessible field net/minecraft/network/protocol/game/ClientboundSetDefaultSpawnP
 accessible field net/minecraft/world/entity/vehicle/AbstractMinecartContainer lootTableSeed J
 accessible field net/minecraft/world/level/block/entity/BeehiveBlockEntity savedFlowerPos Lnet/minecraft/core/BlockPos;
 accessible field net/minecraft/world/level/chunk/PalettedContainer registry Lnet/minecraft/core/IdMap;
+accessible class net/minecraft/world/level/chunk/PalettedContainer$Data
+accessible field net/minecraft/world/level/chunk/PalettedContainer data Lnet/minecraft/world/level/chunk/PalettedContainer$Data;
 accessible field net/minecraft/world/entity/projectile/LargeFireball explosionPower I
 accessible field net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate entityInfoList Ljava/util/List;
 accessible field net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate palettes Ljava/util/List;

@@ -186,7 +186,9 @@ public final class FoliaAsyncScheduler implements AsyncScheduler {
 
         private void setDelay(final ScheduledFuture<?> delay) {
             this.delay = delay;
-            this.state = STATE_SCHEDULED_EXECUTOR;
+            // Fusion Core: the task now waits on the timer; Paper sets STATE_SCHEDULED_EXECUTOR here, which makes the first run
+            // execute on the single timer thread (blocking every other delayed task) and keeps cancel() from cancelling the timer
+            this.state = STATE_ON_TIMER;
         }
 
         @Override

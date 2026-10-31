@@ -7,6 +7,246 @@ VitaCore or Arclight build (`vitacore.conf`/`arclight.conf`, `.vitacore/`/`.arcl
 machine owners stored under `vitacore:owner` are still read. The Java packages (`io.izzel.arclight.*`) and the mod id
 `arclight`, which mods use to detect the hybrid, are Arclight's and stay as they are.
 
+## Fusion Core 1.0 — Purpur's /tpsbar, Adventure 4.21 click and hover, /give fix
+
+- **Purpur's `/tpsbar`:** toggles a boss bar with TPS, MSPT and the player's ping, updated every `tick-interval` ticks (20)
+  from the server tick. TPS and MSPT are the values of `/tps` (Paper's `getTPS()[0]` and `getAverageTickTime()`), no second
+  counter. Permission `purpur.command.tpsbar` (operators), `purpur.command.tpsbar.other` for `/tpsbar <player>`. Settings in
+  the `tpsbar` section of `fusioncore.conf`: on/off (off: no command, a plugin may own `/tpsbar`), interval, MiniMessage
+  title with `<tps>` `<mspt>` `<ping>`, overlay, fill mode (MSPT, TPS or PING) and the colors and limits of the three levels
+  (Purpur's: TPS 19/15, MSPT 40/50, ping 100/200). A bar that is on is kept in the player's data (`fusioncore:tpsbar`) and comes
+  back on join and after a restart while the player still has the permission; `/tpsbar` turns it off. A bar of a player who
+  left is taken off at the next update, all bars at server stop. Probe: `tests/paper-probe/src/o21`.
+
+- **Click and hover from plugins with a newer Adventure:** the server's `GsonComponentSerializer` (`gson()` and
+  `colorDownsamplingGson()`) also reads the text JSON of Minecraft 1.21.5+ (`click_event` with `url`/`command`/`page`/`path`,
+  `hover_event` with its fields inline), rewriting it to the 1.21.1 form before Adventure 4.17 reads it. Plugins that shade
+  Adventure 4.21 and hand text to the server as JSON (LuckPerms 5.5's `PaperAdventureBridge`: the `/lp editor` link) lost
+  click and hover and kept colours and underline. Adventure, MiniMessage, BungeeCord components and adventure-platform-bukkit
+  already kept them. Probe: `tests/paper-probe/src/o22` (fails on the build before).
+
+- **/give left a copy on the ground:** the display copy `/give` drops for the pickup animation (`makeFakeItem`, age set to
+  the item's 6000 - 1) stayed on the ground until spigot.yml `item-despawn-rate` when that is above 6000; it now despawns on the
+  next tick at any rate (as Paper's `despawnRate - 1`; NeoForge/Forge: the entity's lifespan). `/give` drops without
+  `PlayerDropItemEvent`, as CraftBukkit (SPIGOT-2942) and Paper: a plugin cancelling the event put the item into the inventory
+  a second time. Probe: `tests/paper-probe/src/o23` (with `item-despawn-rate: 12000`; fails on the build before).
+
+## Fusion Core 0.2.2 — fixes from the 0.2.1 beta, Paper/Purpur/Leaf settings, audit fixes
+
+- **Machines:** projectiles and explosions no longer count as a machine's own block changes (see "Machines of mods act as their
+  owner"). With Create Big Cannons next to Sable constructs this crashed the server and left the world broken.
+- **Paper's entity lookup:** plugins written for Paper 1.21 that spawn entities through
+  `level.getEntities() instanceof ca.spottedleaf.moonrise...EntityLookup` → `addNewEntity` (GSit's seats and sitting on players)
+  failed with `NoClassDefFoundError`. The core has that class now; in a plugin class that references Moonrise, the call
+  `Level#getEntities()` returns an `EntityLookup` view of the level's own entity getter, and `addNewEntity` adds through the vanilla
+  entity manager. The level's getter itself is not replaced, since mods such as Sable wrap it.
+- **Ray traces:** `World#rayTrace` never searches entities past `maxDistance`. Sable reports block hits on its constructs millions of
+  blocks away, and the search box then spanned all of it, on every arm swing of a player near a construct (Sable logged
+  "Aborting entity get for abnormally large AABB"). The arm swing check also built its ray with pitch and yaw swapped (CraftBukkit
+  passes yaw first), so `LEFT_CLICK_AIR` was decided along the wrong direction.
+- **Chunk generation crash:** `ChunkMap#acquireGeneration` expects every chunk a generation task reaches to have a `ChunkHolder`;
+  with Sable (and other mods keeping chunks far away) one could be missing, and the NPE stopped the server. A missing holder is now
+  scheduled one level past a full chunk (the most a neighbour of a full chunk is asked for) and unloads again once generation
+  releases it; each case is logged with the chunk (the first 20, then every 1000th). Bukkit's chunk load and unload events
+  (`ChunkLoadEvent`, block populators, `ChunkUnloadEvent`) also no longer run in the middle of `DistanceManager#runAllUpdates`: they
+  wait until all ticket level changes are applied, so a handler that loads or unloads chunks cannot change the chunk map while the
+  remaining chunks are being scheduled.
+- **Explosions next to huge entities:** vanilla `Explosion#getSeenPercent` casts (2w+1)(2h+1)(2d+1) rays through an entity's box,
+  hundreds of thousands for something the size of a ship (Create contraptions, physics constructs), and mods such as Create Big
+  Cannons ask a second time for damage; a few shells froze the server for seconds (the same happens on plain NeoForge). New option
+  `optimization.explosion-exposure-samples` (default 16): at most that many sample points per axis, so vanilla mobs keep their exact
+  result; answers are reused within a tick by level, explosion center and box, as Paper's explosion density cache does. 0 restores
+  vanilla. Measured: 8 explosions next to a 30×20×30 entity, 2455 ms before, 329 ms after.
+- **spigot.yml settings the core ignored:** these keys were read but nothing used them; they now work as on Spigot, with
+  Spigot's defaults (no change for a server that never touched them):
+  - `max-tnt-per-tick` — at most that many primed TNT tick in a level per tick, the rest wait (the counter is reset after the
+    level's block entities, as on Spigot);
+  - `hopper-amount` — a hopper moves up to that many items from one slot per transfer, in one `InventoryMoveItemEvent`; what does
+    not fit stays in the slot it came from. On NeoForge this also covers transfers through item handlers
+    (`VanillaInventoryCodeHooks`), which put a stack into a slot only when all of it fits: with `hopper-amount` above 1 a hopper
+    fills a slot partly, as the vanilla transfer does;
+  - `arrow-despawn-rate`, `trident-despawn-rate`; an arrow in the ground away from players (inactive by `entity-activation-range`)
+    now counts toward its despawn as on Spigot — it counted a different timer and never despawned while inactive;
+  - `hanging-tick-frequency` — how often item frames and paintings check that their wall is still there;
+  - `growth.*-modifier` for cactus, sugar cane, melon and pumpkin stems, mushrooms, saplings, nether wart, vines, cocoa, bamboo,
+    sweet berries, kelp, twisting, weeping and cave vines (only crops had it). Crops now use Spigot's formula on the growth roll;
+    before, the crop modifier scaled the growth speed every caller of `CropBlock#getGrowthSpeed` sees, stems included.
+
+  `merge-radius.exp` already worked. `hopper-can-load-chunks` is left as on Spigot 1.21.1, where it has no effect (the block is
+  read, and its chunk loaded, before the check). Probe: `tests/paper-probe/src/o1`.
+- **Paper's world settings:** new section `world` in `fusioncore.conf` with the keys of Paper's `paper-world-defaults.yml`
+  (one value for all worlds, Paper's defaults), so a server moving from Paper, Purpur or Leaf can copy its values over:
+  - `chunks.entity-per-chunk-save-limit` — the most entities of a type a chunk saves and loads (Paper patch 1000); keys are entity
+    ids, modded ones too; -1 (the default for every listed type) means no limit;
+  - `chunks.prevent-moving-into-unloaded-chunks` — a player, or the vehicle they steer, cannot move into chunks that are not loaded
+    and is put back (Paper patch 0258); default false;
+  - `collisions.max-entity-collisions` — an entity pushes and is pushed at most that many times per tick (Paper patch 0126);
+    default 8 as on Paper, so large crowds of mobs push less than on vanilla NeoForge;
+  - `hopper.ignore-occluding-blocks` — hoppers do not look for container minecarts inside full blocks; default false;
+  - `tick-rates.grass-spread`, `wet-farmland`, `dry-farmland` (random ticks every N ticks, spread by position as on Paper),
+    `container-update` (an open menu sends its changes every N ticks), `mob-spawner` (spawners run every N ticks and count down by
+    N, -1 stops them), `sensor` and `behavior` (per entity type and class name, as on Paper); 1 is vanilla.
+
+  `max-auto-save-chunks-per-tick` is not carried over: it belongs to Paper's own chunk system. Probe: `tests/paper-probe/src/o2`.
+- **Opt-in throttles from Pufferfish, Leaf and Purpur** (section `optimization` of `fusioncore.conf`, all off by default, keys as
+  in Leaf's `leaf-global.yml` and Purpur's `purpur.yml`):
+  - `dab` — Pufferfish's Dynamic Activation of Brain: the brain of a mob far from players runs every
+    (distance² / 2^`activation-dist-mod`) ticks, at most `max-tick-freq`; `start-distance`, `dont-enable-if-in-water`,
+    `blacklisted-entities` as in Leaf. It throttles `Brain#tick` itself, so modded mobs with a brain are covered too. The
+    priority is computed in the activation range pass, so it needs `use-activation-and-tracking-range = true`;
+  - `throttle-mob-spawning` — Leaf's (with Paper's failed-attempt counter): a chunk where natural spawning of a category failed
+    `min-failed` times in a row tries again only with `spawn-chance` percent; the counter is not saved with the chunk;
+  - `only-tick-items-in-hand` — Leaf's: only the selected item gets its inventory tick, map updates only for the hands. Maps,
+    compasses and modded items elsewhere in the inventory (armor included) stop updating, so it stays off unless the mods allow it;
+  - `reduce-entity-move-packets` — Leaf's: no periodic position packet for an entity that did not move;
+  - `villager-lobotomize` — Purpur's: a villager that cannot step to any side keeps its brain off and only restocks.
+
+  Not carried over: Leaf's async features (pathfinding, entity tracker, chunk send, player data save) — mods are not written for
+  them; `filter-motion-packets` — a 1.21.1 client interpolates modded entities (contraptions, shells) from those packets;
+  `optimize-mob-despawn`, `optimize-random-tick`, `optimized-powered-rails` — rewrites of vanilla code with no setting to carry
+  over. Probe: `tests/paper-probe/src/o3`.
+- **Player data written in the background:** `optimization.async-playerdata-save` (default false). Leaf's option moves the whole
+  save off the server thread; here the player's NBT, with what mods add through NeoForge's events, is still built and compressed
+  on the server thread, and only the disk write goes to one background thread, in order. Loading a player (and Bukkit's offline
+  player data) waits for that player's pending write; the server waits for all writes when it stops. Measured on the test copy:
+  one save costs 0.5 ms of the server thread instead of 4.7 ms. Probe: `tests/paper-probe/src/o4`.
+- **Anti-Xray:** Paper's engine (patch 0992, `com.destroystokyo.paper.antixray`), section `anti-xray` of `fusioncore.conf` with
+  Paper's keys and defaults (`enabled`, `engine-mode` 1/2/3, `max-block-height`, `update-radius`, `lava-obscures`,
+  `use-permission` with `paper.antixray.bypass`, `hidden-blocks`, `replacement-blocks`; modded block ids work) and `worlds.<folder>`
+  for per-world values, as Paper's `world*/paper-world.yml`. Paper keeps the replacement blocks in every section's palette from
+  the moment the section is created or read (changes to the palette code and the chunk codec); here they are put into the palette
+  right before a chunk packet is built, which leaves saving and loading untouched (the extra entries are dropped when the palette
+  is rebuilt on save). The obfuscation then rewrites the block bits in the packet buffer on Minecraft's background executor, as on
+  Paper; the packet waits for it right before it is encoded, so packets keep their order (Paper delays the packet in the
+  connection instead). Measured: building a chunk packet costs the server thread 0.11 ms with or without Anti-Xray (0.77 ms when the
+  obfuscation ran on it). A chunk packet built off the server thread is sent as it is. Digging at a block within reach and
+  blocks that stop being solid reveal the hidden blocks around them. Probe: `tests/paper-probe/src/o5` (decodes the packet bytes).
+- **Paper's Entity Activation Range 2.0** (patch 0990, with 0040 and 0305) replaces Spigot's activation logic: spigot.yml gets
+  Paper's keys `entity-activation-range.{water,villagers,flying-monsters}`, `wake-up-inactive.*` (inactive mobs are woken a few
+  per tick for a while), `villagers-work-immunity-after/for`, `villagers-active-for-panic`, with Paper's defaults. Immunities last a
+  number of ticks; brand new, dying, leashed and portal-crossing entities stay active; falling blocks, minecarts, boats and eyes of
+  ender are never deactivated; inactive mobs run their goal and target selectors every third tick; inactive villagers keep
+  trading, lose unhappiness and decay gossip; passengers of an inactive vehicle tick by their own activation (they were frozen with
+  it). Spigot's skipping of every fourth tick of active, non-immune entities is gone, as on Paper. Spigot's `activationType` stays
+  for the tracking ranges. Pufferfish's DAB priority is computed in the same pass. Probe: `tests/paper-probe/src/o6`.
+- **spigot.yml `messages.outdated-client` / `messages.outdated-server`** are used, as on Spigot: a client with an older protocol
+  gets the first, a newer one the second (`{0}` is the server's game version); they were ignored and vanilla's translated text
+  was sent. Probe: `tests/paper-probe/src/o7` (raw handshakes).
+- **spigot.yml `zombie-aggressive-towards-villager`** is used (it was ignored): `false` stops zombies, husks, zombie villagers,
+  drowned (Paper patch 0257) and modded zombies from hunting villagers. Purpur's options are in `optimization`:
+  `lagging-threshold` (19.0; the server lags while its one-minute TPS is below it) and
+  `zombie-aggressive-towards-villager-when-lagging` (true; false - no hunting while the server lags). Both are checked each time
+  the target goal runs, so a reload applies to zombies already alive. Probe: `tests/paper-probe/src/o8`.
+- **Small world options in `world`:** `unsupported-settings.allow-headless-pistons` (Paper patch 0398, default false as on Paper:
+  an explosion that destroys an extending piston head destroys its piston too), `armorstand.place-with-arms-visible` (Purpur;
+  new armor stands show their arms) and `feature-seeds.generate-random-seeds-for-all` (Paper patch 0624: every configured
+  feature, modded ones too, gets a random seed of its own per dimension, kept in `fusioncore-feature-seeds.json` in the main
+  world folder as dimension -> feature id -> seed; seeds there are used even with the option off; only new chunks change).
+  Probe: `tests/paper-probe/src/o9`.
+- **Per-world values for section `world`:** `world.worlds.<name>` takes any key of the section for one world, the rest comes
+  from the section (maps such as `entity-per-chunk-save-limit` are merged), as Paper's `world*/paper-world.yml` over
+  `paper-world-defaults.yml`. The name is the Bukkit world name; on a vanilla layout the nether and the end (`world/DIM-1`,
+  `world/DIM1`) are matched by `DIM-1`/`DIM1` too, here and in `anti-xray.worlds`. A mod's own level uses the common values.
+  Probe: `tests/paper-probe/src/o10` (with `o2` for the options themselves).
+- **`optimization.optimize-mob-despawn`** (Leaf's option, off by default) is done without Leaf's rewrite of despawning (which
+  skips NeoForge's despawn event and the `checkDespawn` of modded mobs): mobs run their own despawn code, only the search for
+  the nearest player that affects spawning uses a snapshot of the level's players taken once per tick and sorted by x. Same
+  distance as vanilla; it pays off with many players online. Probe: `tests/paper-probe/src/o11` (against a plain search).
+- **`world.chunks.max-auto-save-chunks-per-tick`** (Paper, default 24): the periodic autosave queues the loaded chunks instead
+  of saving all of them in one tick; each tick at most that many are saved through vanilla's `saveChunkIfNeeded` (10 s
+  cooldown, NeoForge's chunk save event and mods' chunk data unchanged). `/save-all`, `World#save` and stopping still save
+  at once; 0 restores the vanilla autosave. Vanilla 1.21.1 already saves up to 20 dirty chunks per tick while the tick has
+  time left, so the spike this removes is the one of a lagging server, whose dirty chunks pile up until the autosave.
+  Probe: `tests/paper-probe/src/o12`.
+- **Purpur's AFK (`world.idle-timeout`):** a player idle for longer than server.properties `player-idle-timeout` becomes AFK
+  instead of only being kicked; `kick-if-idle` (true, vanilla) kicks them unless they have `purpur.bypassIdleKick`;
+  `tick-nearby-entities` false keeps an AFK player from activating entities around it; `mobs-target` false makes mobs ignore
+  AFK players (TargetingConditions). Any action, moving to another block or turning ends AFK (Purpur counts movement as an
+  action, vanilla does not). Purpur's AFK event, broadcasts and tab-list marks are not ported. Probe:
+  `tests/paper-probe/src/o13` (NeoForge FakePlayer).
+- **`optimization.tracker-nearby-players`** (off by default; the safe part of Leaf's async-entity-tracker, as Paper's nearby
+  player lookup, no threads): when an entity changes section, the tracker checks it against the players in the chunks within
+  its effective tracking range plus those that see it now, instead of every player of the world (a grid of the players by
+  chunk is built once per tracker tick, from 8 players in a world on). Players farther than that range never passed vanilla's
+  check, so the result is the same; events (PlayerTrackEntityEvent, vanish) and packets are unchanged. Probe:
+  `tests/paper-probe/src/o14` (40 fake players in the level's list).
+- **Autosave queue and `/save-off`:** the spread-out autosave (`max-auto-save-chunks-per-tick`) writes nothing while a world
+  does not save (`/save-off`, `World#setAutoSave(false)`), as vanilla's own chunk saving; any full save (`/save-all`, flush,
+  stop, `World#save`) drops what the queue still held. Probe: `tests/paper-probe/src/o12`.
+- **Command suggestion spam limit (Paper patches 0161, 0222):** suggestion requests count against a per-player limit
+  (`spam-limiter.tab-spam-increment` / `tab-spam-limit`, Paper's 1 and 500, the counter drops by one a tick; operators are
+  exempt) and a player over it is kicked for spamming; it was missing on both the plain and the AsyncTabCompleteEvent path.
+  With an AsyncTabCompleteEvent listener at most `spam-limiter.tab-complete-max-pending` (16) requests of one player wait for
+  the four async threads, and requests of a player that has left are dropped.
+- **Command permission context:** the bootstrap's `CommandNode.CURRENT_COMMAND` is reset after the requirement test of
+  `CommandNode#canUse`, as CraftBukkit does; it stayed set to the last checked node, so a later `hasPermission(level)` outside
+  a check could accept the Bukkit permission of an unrelated command (inherited from Arclight). Probe: `tests/paper-probe/src/o15`.
+- **Folia async scheduler:** the first run of a delayed or repeating task goes to the worker pool like later ones; it ran on
+  the single timer thread (a slow task held up every other delayed task) and `cancel()` before the first run did not cancel
+  the timer (Paper has the same bug). Probe: `tests/paper-probe/src/o15`.
+- **Player data saved in the background, a write that does not finish:** a player's newest data stays in memory until its
+  write is on disk; a load that waited 30 s in vain, or comes after a failed write, reads that data instead of the older
+  file (it used to load the older file: items moved since could come back). A stop that cannot finish the writes in 60 s
+  names the players whose data is not on disk. Probe: `tests/paper-probe/src/o4` (stalled write thread).
+- **Anti-Xray kept on the level:** each level holds its Anti-Xray controller itself; the static weak map kept every
+  unloaded level with Anti-Xray on alive (the controller refers to its level). Probe: `tests/paper-probe/src/o5`.
+- **optimize-mob-despawn, players moved within a tick:** the snapshot of the players is rebuilt when a player of the level
+  moves, changes game mode, joins or leaves during the tick, or no longer affects spawning, so the nearest player is always
+  the one vanilla finds (a player teleported during the mob ticks could make a mob despawn next to another player). The
+  snapshot is kept on the level (it held unloaded levels through its players). Probe: `tests/paper-probe/src/o16`.
+- **tracker-nearby-players:** the grid of players is emptied when a world drops below 8 players, so it does not keep the
+  last players that left.
+- **Explosion exposure cache:** an entity's exposure is reused only while the same explosion runs (a mod's damage calculator
+  asking again, as Create Big Cannons does), keyed by the entity too, and dropped when the explosion ends. It was kept for
+  the whole tick by center and box: another entity with the same box, or a wall built or broken in between, got the old
+  number, and the last tick's levels stayed referenced until the next explosion. Probes: `tests/paper-probe/src/o16`, `b8`.
+- **Feature seeds, a file that cannot be written:** the seeds already in `fusioncore-feature-seeds.json` stay in use when new
+  ones cannot be written (they were all dropped until a restart); a new feature gets its random seed only once it is on
+  disk, and an unreadable or unwritable file is tried again every 30 s. Probe: `tests/paper-probe/src/o17`.
+- **Machine BlockPlaceEvent:** the block a mod's machine places is shown by `getBlockPlaced()` as the new block (it showed the
+  block still in the world, usually air, so a plugin denying a block type let it through); `getBlockReplacedState()` is the
+  old block. A machine replacing one block by another now fires the place event of the new block after the break event.
+  Probe: `tests/paper-probe/src/o18` (with `p80`).
+- **Entity scheduler retirement:** retiring an entity's Folia scheduler takes the lock its lazy creation holds, so a scheduler
+  created on another thread while the entity is removed is either seen and retired or created already retired (an accepted
+  task could otherwise never run nor retire, and the entity stayed referenced).
+- **Connection throttle cleanup:** the periodic cleanup drops only entries older than the throttle; it compared the time
+  stamp itself with the interval (as Spigot does), emptied the map every 200 connections and let a fresh reconnect through.
+- **throttle-mob-spawning spawn-chance 100:** a chance of 100 never skips an attempt (one sample in 2^31 did). Probe:
+  `tests/paper-probe/src/o3`.
+- **Hoppers without Bukkit listeners:** when no plugin listens to `InventoryMoveItemEvent` / `HopperInventorySearchEvent`,
+  hoppers (vanilla path and NeoForge's `VanillaInventoryCodeHooks`) skip building Bukkit inventories, item mirrors and the
+  event, and NeoForge's own handler search result is used as it is. With a listener nothing changes. Logging plugins
+  (CoreProtect and the like) listen, so the gain is for servers without them. Probes: `tests/paper-probe/src/o19`, `o1`.
+- **Headless piston check, cost:** the check looks at the block state the explosion ray has just read, as Paper does, and
+  reads the world again only where that was a moving piston; it read the world at every step of every ray. Probes:
+  `tests/paper-probe/src/o9`, `b8`.
+- **throttle-mob-spawning off costs nothing:** the per-chunk counters of failed spawn attempts are made on first use, and
+  nothing is counted while the option is off (every loaded chunk carried the array, every attempt updated it). Probes:
+  `tests/paper-probe/src/o3`, `p43`.
+- **tracker-nearby-players, players bunched together:** when the tracking range covers more chunks than the players occupy,
+  the occupied chunks are walked (same candidates); it walked every player of the world. Probes: `tests/paper-probe/src/o14`,
+  `o16`.
+- **Air supply without listeners:** with no plugin listening to `EntityAirChangeEvent`, an entity's air is set directly; the
+  event (and a Bukkit entity wrapper) was built every tick for every living entity. With a listener nothing changes. Probe:
+  `tests/paper-probe/src/o20`.
+- **Block physics without listeners:** with no plugin listening to `BlockPhysicsEvent`, neighbour and shape updates skip
+  building the event (and its Bukkit block); updates themselves run as before. With a listener nothing changes. Probes:
+  `tests/paper-probe/src/o20`, `p63e`.
+- **DAB, cost:** the priority of an entity is not worked out for entities DAB never throttles (not living) nor again in the
+  same tick for an entity already at full priority; it looked for the nearest player each time. Probe: `tests/paper-probe/src/o3`.
+- **Move packets, cost:** a player's or vehicle's move packet builds the `from` / `to` locations of `PlayerMoveEvent` /
+  `VehicleMoveEvent` only when the move reaches the event threshold; every packet built two or three of them. The events
+  and their values are the same.
+- **Paper's `armor-stands.tick` and the minecart part of `armor-stands.do-collision-entity-lookups`** (`world.armorstand.tick`,
+  `world.armorstand.minecart-collision-lookups`, per world, both true by default): false - new armor stands do not tick (a
+  stand's own `setCanTick` / `Paper.CanTickOverride` wins), or do not look for minecarts to push. Probe:
+  `tests/paper-probe/src/o20`.
+- **Paper's `maps.item-frame-cursor-update-interval`** (`world.maps`, per world): ticks between map updates sent for a map in an
+  item frame; 10 (vanilla) by default, 0 or less sends none.
+- **Log:** `[EXT_LOGIC] Level class ... treated as logic world` is written at debug level (`logs/debug.log`): a mod's own level
+  wrapper (Create's contraption and schematic levels) is the normal case.
+
 ## Fusion Core 0.2.0 — 2026-09-20
 
 Port of Fusion Core from Minecraft 1.20.1 / Forge to **Minecraft 1.21.1 / NeoForge 21.1.250**.
@@ -975,6 +1215,11 @@ event at all, so it could reach into claims. Now:
   `setBlock` would duplicate them). A contraption is assembled all or nothing: a denied block fails the assembly with Create's own
   "unmovable block" message before anything is taken from the world. On disassembly a block that may not be placed drops as an item,
   as Create does when the spot is taken.
+- Only block entities and entities that work as machines (Create's contraptions) count. Projectiles, mobs, items, falling blocks,
+  experience orbs, hanging entities and anything with an owner of its own (`TraceableEntity`, such as primed TNT) are never machines
+  and inherit no owner: a shell fired by a cannon does not break blocks as the cannon's owner (0.2.2; in 0.2.1 Create Big Cannons shells
+  near Sable constructs crashed the server this way). Blocks broken by an explosion are not checked either: the explosion fires
+  `EntityExplodeEvent`/`BlockExplodeEvent` as usual.
 - `fusioncore.conf`, section `machines`: `owner-events` (default `true`); `unknown-owner` for machines with no owner (placed before this
   version, or by commands): `allow` (default, no events, as before), `deny` (they change nothing outside their own position), `mod`
   (events as the fake player `[<modid>]` with a fixed UUID, which claims can trust); `ignored-mods` (mod ids left alone).

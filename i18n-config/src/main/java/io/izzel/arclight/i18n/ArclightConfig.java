@@ -2,6 +2,7 @@ package io.izzel.arclight.i18n;
 
 import com.google.common.reflect.TypeToken;
 import io.izzel.arclight.i18n.conf.ConfigSpec;
+import io.izzel.arclight.i18n.conf.WorldSpec;
 import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ArclightConfig {
 
@@ -41,6 +43,40 @@ public class ArclightConfig {
 
     public static ConfigSpec spec() {
         return instance.spec;
+    }
+
+    private final java.util.Map<String, WorldSpec> worldSpecs = new ConcurrentHashMap<>();
+
+    /**
+     * Fusion Core: section {@code world} for one world by its folder name: the keys under {@code world.worlds.<name>} with the
+     * rest from {@code world}, as Paper's world*{@literal /}paper-world.yml over paper-world-defaults.yml. Resolved once per name.
+     */
+    public static WorldSpec world(String name) {
+        if (name == null) {
+            return instance.spec.getWorld();
+        }
+        return instance.worldSpecs.computeIfAbsent(name, instance::resolveWorld);
+    }
+
+    private WorldSpec resolveWorld(String name) {
+        ConfigurationNode base = this.node.getNode("world");
+        ConfigurationNode override = base.getNode("worlds", name);
+        if (override.isVirtual() && name.lastIndexOf('/') >= 0) {
+            // the nether and end of a vanilla-layout server are named world/DIM-1, world/DIM1: their folder name works too
+            override = base.getNode("worlds", name.substring(name.lastIndexOf('/') + 1));
+        }
+        if (override.isVirtual()) {
+            return this.spec.getWorld();
+        }
+        try {
+            ConfigurationNode merged = override.copy();
+            merged.mergeValuesFrom(base);
+            WorldSpec spec = merged.getValue(TypeToken.of(WorldSpec.class));
+            return spec == null ? this.spec.getWorld() : spec;
+        } catch (ObjectMappingException e) {
+            System.err.println("[FusionCore] Invalid world.worlds." + name + " in fusioncore.conf, using the common values: " + e);
+            return this.spec.getWorld();
+        }
     }
 
     private static void load() throws Exception {

@@ -43,6 +43,34 @@ public abstract class CraftWorldMixin {
 
     /**
      * @author Fusion Core
+     * @reason the entity search never reaches past maxDistance: a mod may report a block hit far away (Sable's constructs live
+     * millions of blocks off), and the search box then spanned all of it on every arm swing
+     */
+    @Overwrite(remap = false)
+    public org.bukkit.util.RayTraceResult rayTrace(org.bukkit.Location start, org.bukkit.util.Vector direction, double maxDistance,
+                                                   org.bukkit.FluidCollisionMode fluidCollisionMode, boolean ignorePassableBlocks, double raySize,
+                                                   java.util.function.Predicate<? super org.bukkit.entity.Entity> filter) {
+        CraftWorld self = (CraftWorld) (Object) this;
+        org.bukkit.util.RayTraceResult blockHit = self.rayTraceBlocks(start, direction, maxDistance, fluidCollisionMode, ignorePassableBlocks);
+        org.bukkit.util.Vector startVec = null;
+        double blockHitDistance = maxDistance;
+        if (blockHit != null) {
+            startVec = start.toVector();
+            blockHitDistance = Math.min(maxDistance, startVec.distance(blockHit.getHitPosition()));
+        }
+        org.bukkit.util.RayTraceResult entityHit = self.rayTraceEntities(start, direction, blockHitDistance, raySize, filter);
+        if (blockHit == null) {
+            return entityHit;
+        }
+        if (entityHit == null) {
+            return blockHit;
+        }
+        double entityHitDistanceSquared = startVec.distanceSquared(entityHit.getHitPosition());
+        return entityHitDistanceSquared < blockHitDistance * blockHitDistance ? entityHit : blockHit;
+    }
+
+    /**
+     * @author Fusion Core
      * @reason return the canonical flag objects, as Paper does
      */
     @Overwrite(remap = false)

@@ -26,6 +26,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** Fusion Core: Paper's AsyncTabCompleteEvent for command suggestions, run off the main thread when someone listens. */
 @Mixin(ServerGamePacketListenerImpl.class)
@@ -36,15 +37,52 @@ public abstract class ServerGamePacketListenerImplMixin_TabComplete {
         new ThreadFactoryBuilder().setDaemon(true).setNameFormat("Async Tab Complete Thread - #%d")
             .setUncaughtExceptionHandler(new DefaultUncaughtExceptionHandlerWithName(MinecraftServer.LOGGER)).build());
 
+    // Paper's tab spam limiter (patches 0161, 0222): counted once per request, on the network thread, before anything else
+    @Unique private final AtomicInteger fusioncore$tabSpam = new AtomicInteger();
+    // requests of this player waiting for the async executor
+    @Unique private final AtomicInteger fusioncore$tabPending = new AtomicInteger();
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void fusioncore$tabSpamDecay(CallbackInfo ci) {
+        if (this.fusioncore$tabSpam.get() > 0) {
+            this.fusioncore$tabSpam.getAndDecrement();
+        }
+    }
+
     @Inject(method = "handleCustomCommandSuggestions", cancellable = true, at = @At("HEAD"))
     private void fusioncore$asyncTabComplete(ServerboundCommandSuggestionPacket packet, CallbackInfo ci) {
         MinecraftServer server = ArclightServer.getMinecraftServer();
-        if (server.isSameThread() || !ArclightServer.isInitialized()
-            || AsyncTabCompleteEvent.getHandlerList().getRegisteredListeners().length == 0) {
+        if (server.isSameThread() || !ArclightServer.isInitialized()) {
+            return;
+        }
+        var self = (ServerGamePacketListenerImpl) (Object) this;
+        var limits = io.izzel.arclight.i18n.ArclightConfig.spec().getSpamLimiter();
+        if (this.fusioncore$tabSpam.addAndGet(limits.getTabSpamIncrement()) > limits.getTabSpamLimit()
+            && !server.getPlayerList().isOp(self.player.getGameProfile())) {
+            ci.cancel();
+            server.execute(() -> self.disconnect(Component.translatable("disconnect.spam")));
+            return;
+        }
+        if (AsyncTabCompleteEvent.getHandlerList().getRegisteredListeners().length == 0) {
             return;
         }
         ci.cancel();
-        fusioncore$TAB_COMPLETE_EXECUTOR.execute(() -> this.fusioncore$fireAsyncTabComplete(packet, server));
+        // a slow listener must not let one player queue requests without end: over the limit, no suggestions
+        if (!self.isAcceptingMessages() || this.fusioncore$tabPending.incrementAndGet() > limits.getTabCompleteMaxPending()) {
+            if (self.isAcceptingMessages()) {
+                this.fusioncore$tabPending.decrementAndGet();
+            }
+            return;
+        }
+        fusioncore$TAB_COMPLETE_EXECUTOR.execute(() -> {
+            try {
+                if (self.isAcceptingMessages()) {
+                    this.fusioncore$fireAsyncTabComplete(packet, server);
+                }
+            } finally {
+                this.fusioncore$tabPending.decrementAndGet();
+            }
+        });
     }
 
     @Unique

@@ -1,6 +1,6 @@
-# Fusion Core 0.2.1
+# Fusion Core 1.0
 
-> **Beta.** Fusion Core is being tested before its first stable release. Back up your worlds, and please report problems
+> Back up your worlds before the first start, and please report problems
 > through [Issues](https://github.com/BuTaMuHKaBaKKa/FusionCore/issues) with the full `logs/latest.log`.
 
 A Bukkit/Spigot server that also loads NeoForge mods, for **Minecraft 1.21.1** on
@@ -23,7 +23,7 @@ are read under the old key.
 ## Running a server
 
 See [distribution/README-RU.md](distribution/README-RU.md) (Russian) for the end-user
-setup guide. In short: put `fusioncore-neoforge-1.21.1-0.2.1.jar` in an empty folder
+setup guide. In short: put `fusioncore-neoforge-1.21.1-1.0.jar` in an empty folder
 together with `start.bat` or `start.sh`, accept the Minecraft EULA in `eula.txt` if you
 agree to it, and run the launcher. NeoForge, Minecraft and the required libraries are
 downloaded on first start.

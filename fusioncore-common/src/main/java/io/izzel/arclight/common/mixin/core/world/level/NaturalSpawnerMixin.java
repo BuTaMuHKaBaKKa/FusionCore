@@ -57,7 +57,18 @@ public abstract class NaturalSpawnerMixin {
                 if (limit != 0) {
                     if ((flag || !classification.isFriendly()) && (flag1 || classification.isFriendly()) && (flag2 || !classification.isPersistent())
                         && ((WorldEntitySpawnerBridge.EntityDensityManagerBridge) manager).bridge$canSpawn(classification, chunk.getPos(), limit)) {
+                        // Fusion Core: Leaf's optimization.throttle-mob-spawning, chunks that keep failing try less often
+                        // (off: nothing is counted)
+                        boolean throttled = io.izzel.arclight.common.mod.util.FusionCoreTickThrottles.spawnThrottleEnabled();
+                        var throttle = (io.izzel.arclight.common.mod.util.FusionCoreTickThrottles.ChunkState) chunk;
+                        if (throttled && io.izzel.arclight.common.mod.util.FusionCoreTickThrottles.skipSpawnAttempt(classification, throttle, world.random)) {
+                            continue;
+                        }
+                        int before = throttled ? manager.getMobCategoryCounts().getInt(classification) : 0;
                         spawnCategoryForChunk(classification, world, chunk, ((WorldEntitySpawnerBridge.EntityDensityManagerBridge) manager)::bridge$canSpawn, ((WorldEntitySpawnerBridge.EntityDensityManagerBridge) manager)::bridge$updateDensity);
+                        if (throttled) {
+                            io.izzel.arclight.common.mod.util.FusionCoreTickThrottles.recordSpawnAttempt(classification, throttle, manager.getMobCategoryCounts().getInt(classification) - before);
+                        }
                     }
                 }
             }

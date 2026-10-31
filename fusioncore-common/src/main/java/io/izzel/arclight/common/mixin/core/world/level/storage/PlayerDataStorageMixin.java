@@ -54,11 +54,44 @@ public class PlayerDataStorageMixin implements PlayerDataStorageBridge {
         });
     }
 
+    // Fusion Core: optimization.async-playerdata-save, see FusionCorePlayerDataSaving
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "save", at = @At(value = "INVOKE", target = "Lnet/minecraft/nbt/NbtIo;writeCompressed(Lnet/minecraft/nbt/CompoundTag;Ljava/nio/file/Path;)V"))
+    private void fusioncore$encodeOnly(CompoundTag tag, Path temp, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original) throws java.io.IOException {
+        if (io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.enabled()) {
+            io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.encode(tag);
+        } else {
+            original.call(tag, temp);
+        }
+    }
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "save", at = @At(value = "INVOKE", target = "Lnet/minecraft/Util;safeReplaceFile(Ljava/nio/file/Path;Ljava/nio/file/Path;Ljava/nio/file/Path;)V"))
+    private void fusioncore$writeInBackground(Path file, Path temp, Path old, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original,
+                                              @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Player player) {
+        if (io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.hasEncoded()) {
+            io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.submit(player.getStringUUID(), player.getName().getString(), file, temp, old);
+        } else {
+            original.call(file, temp, old);
+        }
+    }
+
+    @Inject(method = "load(Lnet/minecraft/world/entity/player/Player;Ljava/lang/String;)Ljava/util/Optional;", cancellable = true, at = @At("HEAD"))
+    private void fusioncore$awaitWrite(Player player, String suffix, CallbackInfoReturnable<Optional<CompoundTag>> cir) {
+        // a background write still pending (or failed): its data is newer than the file
+        CompoundTag newer = io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.awaitNewer(player.getStringUUID());
+        if (newer != null && ".dat".equals(suffix)) {
+            cir.setReturnValue(Optional.of(newer));
+        }
+    }
+
     public File getPlayerDir() {
         return this.playerDir;
     }
 
     public CompoundTag getPlayerData(String uuid) {
+        CompoundTag newer = io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.awaitNewer(uuid); // Fusion Core: pending background write
+        if (newer != null) {
+            return newer;
+        }
         try {
             final File file1 = new File(this.playerDir, uuid + ".dat");
             if (file1.exists()) {
@@ -91,6 +124,13 @@ public class PlayerDataStorageMixin implements PlayerDataStorageBridge {
     // CraftBukkit start
     private Optional<CompoundTag> load(String name, String s1, String s) { // name, uuid, extension
         // CraftBukkit end
+        // Fusion Core: a background write of this player still pending (or failed) holds newer data than the file
+        if (".dat".equals(s)) {
+            CompoundTag newer = io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.awaitNewer(s1);
+            if (newer != null) {
+                return Optional.of(newer);
+            }
+        }
         File file = this.playerDir;
         // String s1 = entityhuman.getStringUUID(); // CraftBukkit - used above
         File file1 = new File(file, s1 + s);

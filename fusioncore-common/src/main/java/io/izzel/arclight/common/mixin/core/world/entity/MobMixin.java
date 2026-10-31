@@ -318,6 +318,10 @@ public abstract class MobMixin extends LivingEntityMixin implements MobBridge {
     @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "checkDespawn", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/Level;getNearestPlayer(Lnet/minecraft/world/entity/Entity;D)Lnet/minecraft/world/entity/player/Player;"))
     private net.minecraft.world.entity.player.Player fusioncore$nearestAffectingPlayer(net.minecraft.world.level.Level level, net.minecraft.world.entity.Entity entity, double distance,
                                                                                        com.llamalad7.mixinextras.injector.wrapoperation.Operation<net.minecraft.world.entity.player.Player> original) {
+        // Fusion Core: optimization.optimize-mob-despawn - the same search over a per-tick snapshot sorted by x
+        if (distance < 0.0D && io.izzel.arclight.i18n.ArclightConfig.spec().getOptimization().isOptimizeMobDespawn()) {
+            return io.izzel.arclight.common.mod.util.FusionCoreDespawn.nearest(level, entity.getX(), entity.getY(), entity.getZ());
+        }
         return level.getNearestPlayer(entity.getX(), entity.getY(), entity.getZ(), distance, io.izzel.arclight.common.mod.util.FusionCorePlayers::affectsSpawning);
     }
 

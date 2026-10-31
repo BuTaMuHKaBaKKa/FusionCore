@@ -43,7 +43,8 @@ public class DistValidate {
         return SEEN_CLASSES.computeIfAbsent(cl, c -> {
             var name = c.getName();
             var result = ArclightConfig.spec().getCompat().getExtraLogicWorlds().contains(cl.getName());
-            ArclightServer.LOGGER.warn(MARKER, "Level class {} treated as logic world: {}", name, result);
+            // Fusion Core: a mod's own level wrapper (contraption, schematic) is the normal case, not a warning
+            ArclightServer.LOGGER.debug(MARKER, "Level class {} treated as logic world: {}", name, result);
             return result;
         });
     }

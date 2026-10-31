@@ -62,6 +62,13 @@ public abstract class AbstractArrowMixin extends ProjectileMixin {
         this.bridge$pushEntityRemoveCause(EntityRemoveEvent.Cause.HIT);
     }
 
+    // Fusion Core: Spigot's arrow-despawn-rate and trident-despawn-rate instead of vanilla's 1200 ticks
+    @org.spongepowered.asm.mixin.injection.ModifyConstant(method = "tickDespawn", constant = @org.spongepowered.asm.mixin.injection.Constant(intValue = 1200))
+    private int fusioncore$despawnRate(int vanilla) {
+        org.spigotmc.SpigotWorldConfig spigot = ((io.izzel.arclight.common.bridge.core.world.level.WorldBridge) this.level()).bridge$spigotConfig();
+        return (Object) this instanceof net.minecraft.world.entity.projectile.ThrownTrident ? spigot.tridentDespawnRate : spigot.arrowDespawnRate;
+    }
+
     @Inject(method = "tickDespawn", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/projectile/AbstractArrow;discard()V"))
     private void arclight$despawn(CallbackInfo ci) {
         this.bridge$pushEntityRemoveCause(EntityRemoveEvent.Cause.DESPAWN);

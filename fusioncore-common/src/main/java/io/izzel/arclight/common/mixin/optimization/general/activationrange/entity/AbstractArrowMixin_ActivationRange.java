@@ -10,14 +10,16 @@ public abstract class AbstractArrowMixin_ActivationRange extends EntityMixin_Act
 
     // @formatter:off
     @Shadow public boolean inGround;
-    @Shadow protected int inGroundTime;
+    @Shadow public int life;
     // @formatter:on
 
     @Override
     public void inactiveTick() {
         super.inactiveTick();
+        // Fusion Core: Spigot counts the despawn timer of an inactive arrow in the ground (was inGroundTime, so arrows
+        // away from players never despawned)
         if (this.inGround) {
-            this.inGroundTime++;
+            this.life++;
         }
     }
 }

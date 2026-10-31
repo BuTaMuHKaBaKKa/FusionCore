@@ -128,9 +128,12 @@ public abstract class ServerEntityMixin implements ServerEntityBridge {
             elapsedTicks = 0;
         }
         this.lastTick = ArclightConstants.currentTick;
+        // Fusion Core: Paper's maps.item-frame-cursor-update-interval (10 as vanilla, 0 or less - no map updates from frames)
+        int mapInterval = this.entity instanceof ItemFrame
+            ? io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(this.level).getMaps().getItemFrameCursorUpdateInterval() : 10;
         if (this.entity instanceof ItemFrame itemFrame) {
             ItemStack itemstack = itemFrame.getItem();
-            if (this.tickCount / 10 != this.lastMapUpdate && itemstack.getItem() instanceof MapItem) {
+            if (mapInterval > 0 && this.tickCount / mapInterval != this.lastMapUpdate && itemstack.getItem() instanceof MapItem) {
                 MapId mapId = itemstack.get(DataComponents.MAP_ID);
                 MapItemSavedData mapdata = MapItem.getSavedData(mapId, this.level);
                 if (mapdata != null) {
@@ -179,6 +182,11 @@ public abstract class ServerEntityMixin implements ServerEntityBridge {
                         if (flag4) {
                             ipacket1 = new ClientboundMoveEntityPacket.Pos(this.entity.getId(), (short) ((int) i), (short) ((int) j), (short) ((int) k), this.entity.onGround());
                             pos = true;
+                            // Fusion Core: Leaf's reduce-entity-move-packets, the periodic position packet that moves nothing
+                            // (ground changes go as a teleport packet above)
+                            if (i == 0 && j == 0 && k == 0 && io.izzel.arclight.i18n.ArclightConfig.spec().getOptimization().isReduceEntityMovePackets()) {
+                                ipacket1 = null;
+                            }
                         } else if (flag) {
                             ipacket1 = new ClientboundMoveEntityPacket.Rot(this.entity.getId(), (byte) l, (byte) k1, this.entity.onGround());
                             rot = true;
@@ -227,7 +235,9 @@ public abstract class ServerEntityMixin implements ServerEntityBridge {
         }
         this.lastUpdate = this.tickCount / this.updateInterval;
         this.lastPosUpdate = this.tickCount / 60;
-        this.lastMapUpdate = this.tickCount / 10;
+        if (mapInterval > 0) {
+            this.lastMapUpdate = this.tickCount / mapInterval;
+        }
         this.tickCount += elapsedTicks;
         if (this.entity.hurtMarked) {
             boolean cancelled = false;

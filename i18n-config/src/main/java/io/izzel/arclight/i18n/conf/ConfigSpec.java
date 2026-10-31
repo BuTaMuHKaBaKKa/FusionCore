@@ -33,6 +33,18 @@ public class ConfigSpec {
     @Setting("machines")
     private MachinesSpec machinesSpec;
 
+    @Setting("world")
+    private WorldSpec worldSpec;
+
+    @Setting("anti-xray")
+    private AntiXraySpec antiXraySpec;
+
+    @Setting("spam-limiter")
+    private SpamLimiterSpec spamLimiterSpec;
+
+    @Setting("tpsbar")
+    private TpsBarSpec tpsBarSpec;
+
     public int getVersion() {
         return version;
     }
@@ -67,5 +79,21 @@ public class ConfigSpec {
 
     public MachinesSpec getMachines() {
         return machinesSpec;
+    }
+
+    public AntiXraySpec getAntiXray() {
+        return antiXraySpec == null ? new AntiXraySpec() : antiXraySpec;
+    }
+
+    public SpamLimiterSpec getSpamLimiter() {
+        return spamLimiterSpec == null ? new SpamLimiterSpec() : spamLimiterSpec;
+    }
+
+    public TpsBarSpec getTpsBar() {
+        return tpsBarSpec == null ? new TpsBarSpec() : tpsBarSpec;
+    }
+
+    public WorldSpec getWorld() {
+        return worldSpec == null ? new WorldSpec() : worldSpec;
     }
 }

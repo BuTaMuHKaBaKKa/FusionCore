@@ -162,8 +162,25 @@ public class PaperCallTransformer implements PluginTransformer {
         mn.instructions.set(init, new MethodInsnNode(Opcodes.INVOKESTATIC, factory[0], factory[1], factory[2], false));
     }
 
+    private static final String MOONRISE = "ca/spottedleaf/moonrise/";
+    private static final String ENTITY_GETTER_DESC = "()Lnet/minecraft/world/level/entity/LevelEntityGetter;";
+
+    /** Whether the class names Paper's Moonrise chunk system anywhere in its code */
+    private static boolean usesMoonrise(ClassNode node) {
+        for (var mn : node.methods) {
+            for (var insn : mn.instructions) {
+                if (insn instanceof org.objectweb.asm.tree.TypeInsnNode type && type.desc.startsWith(MOONRISE)
+                    || insn instanceof MethodInsnNode method && method.owner.startsWith(MOONRISE)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public void handleClass(ClassNode node, ClassLoaderRemapper remapper, ArclightRemapConfig config) {
+        boolean moonrise = usesMoonrise(node);
         for (var mn : node.methods) {
             for (var insn : mn.instructions.toArray()) {
                 if (insn instanceof MethodInsnNode init && init.getOpcode() == Opcodes.INVOKESPECIAL && init.name.equals("<init>")) {
@@ -212,6 +229,16 @@ public class PaperCallTransformer implements PluginTransformer {
                     && STATIC_METHODS.containsKey(method.owner)
                     && STATIC_METHODS.get(method.owner).containsKey(method.name + method.desc)) {
                     method.owner = STATIC_METHODS.get(method.owner).get(method.name + method.desc);
+                    method.itf = false;
+                } else if (moonrise && method.getOpcode() == Opcodes.INVOKEVIRTUAL
+                    && method.owner.startsWith("net/minecraft/")
+                    && method.name.equals("getEntities")
+                    && method.desc.equals(ENTITY_GETTER_DESC)) {
+                    // Paper's entity lookup: `level.getEntities() instanceof EntityLookup` (GSit spawning its seats)
+                    method.setOpcode(Opcodes.INVOKESTATIC);
+                    method.owner = Type.getInternalName(io.izzel.arclight.common.mod.util.FusionCoreEntityLookup.class);
+                    method.name = "of";
+                    method.desc = "(Lnet/minecraft/world/level/Level;)" + ENTITY_GETTER_DESC.substring(2);
                     method.itf = false;
                 }
             }

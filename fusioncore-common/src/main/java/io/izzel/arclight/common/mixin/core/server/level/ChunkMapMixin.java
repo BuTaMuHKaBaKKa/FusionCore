@@ -97,4 +97,39 @@ public abstract class ChunkMapMixin implements ChunkMapBridge {
         int own = io.izzel.arclight.common.mod.util.FusionCorePlayers.state(player).fusioncore$viewDistance();
         return own == -1 ? distance : Math.min(distance, own);
     }
+
+    // Fusion Core: ChunkMap#acquireGeneration expects every chunk a generation task reaches to have a ChunkHolder. With mods that
+    // keep chunks far away (Sable's plots) one can be missing, and the NPE stopped the server. The missing one is always a neighbour
+    // (the chunk being generated has its holder), so it is scheduled one level past a full chunk, the most a neighbour of a full
+    // chunk is ever asked for, and left to unload once generation lets go of it; each case is logged.
+
+    // @formatter:off
+    @Shadow @Final public it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap<ChunkHolder> updatingChunkMap;
+    @Shadow @Final public it.unimi.dsi.fastutil.longs.LongSet toDrop;
+    @Shadow @Nullable abstract ChunkHolder updateChunkScheduling(long chunkPos, int newLevel, @Nullable ChunkHolder holder, int oldLevel);
+    // @formatter:on
+
+    @org.spongepowered.asm.mixin.Unique
+    private static int fusioncore$missingHolders;
+
+    @Inject(method = "acquireGeneration", cancellable = true, at = @At("HEAD"))
+    private void fusioncore$missingHolder(long chunkPos, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<net.minecraft.server.level.GenerationChunkHolder> cir) {
+        if (this.updatingChunkMap.get(chunkPos) != null) {
+            return;
+        }
+        int level = net.minecraft.server.level.ChunkLevel.byStatus(net.minecraft.server.level.FullChunkStatus.FULL) + 1;
+        ChunkHolder holder = this.updateChunkScheduling(chunkPos, level, null, net.minecraft.server.level.ChunkLevel.MAX_LEVEL + 1);
+        int count = ++fusioncore$missingHolders;
+        if (count <= 20 || count % 1000 == 0) {
+            io.izzel.arclight.common.mod.server.ArclightServer.LOGGER.warn("Chunk {} in {} was sent to generation without a ChunkHolder ({} time(s)); scheduled one instead of crashing",
+                new net.minecraft.world.level.ChunkPos(chunkPos), this.level.dimension().location(), count);
+        }
+        if (holder == null) {
+            return; // cannot happen at a loaded level; vanilla code runs and fails as before
+        }
+        ((io.izzel.arclight.common.bridge.core.world.server.ChunkHolderBridge) holder).bridge$updateHighestAllowedStatus((ChunkMap) (Object) this);
+        this.toDrop.add(chunkPos);
+        holder.increaseGenerationRefCount();
+        cir.setReturnValue(holder);
+    }
 }

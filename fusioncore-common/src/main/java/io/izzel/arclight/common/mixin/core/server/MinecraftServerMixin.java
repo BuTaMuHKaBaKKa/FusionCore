@@ -464,6 +464,7 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
         this.server.getScheduler().mainThreadHeartbeat(this.tickCount);
         PaperSchedulers.tick(); // Fusion Core: Paper's Folia schedulers (patch 0843)
         io.izzel.arclight.common.mod.util.FusionCoreAdventureProviders.CALLBACK_MANAGER.handleQueue(this.tickCount); // Fusion Core: Paper's click callbacks
+        io.izzel.arclight.common.mod.util.FusionCoreTpsBar.tick(this.tickCount); // Fusion Core: Purpur's /tpsbar
         this.bridge$drainQueuedTasks();
     }
 
@@ -478,10 +479,39 @@ public abstract class MinecraftServerMixin extends ReentrantBlockableEventLoop<T
         io.izzel.arclight.common.mod.util.FusionCorePaperServer.setTickingWorlds(false);
     }
 
+    // Fusion Core: player data written in the background (optimization.async-playerdata-save) is on disk before the server exits
+    @Inject(method = "stopServer", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/server/MinecraftServer;saveAllChunks(ZZZ)Z"))
+    private void fusioncore$flushPlayerData(CallbackInfo ci) {
+        io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.flush();
+    }
+
+    // Fusion Core: Purpur's /tpsbar bars are taken off before the players are kicked
+    @Inject(method = "stopServer", at = @At("HEAD"))
+    private void fusioncore$stopTpsBars(CallbackInfo ci) {
+        io.izzel.arclight.common.mod.util.FusionCoreTpsBar.stop();
+    }
+
+    @Inject(method = "stopServer", at = @At("RETURN"))
+    private void fusioncore$flushPlayerDataLast(CallbackInfo ci) {
+        io.izzel.arclight.common.mod.util.FusionCorePlayerDataSaving.flush();
+    }
+
     @Inject(method = "stopServer", at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/server/MinecraftServer;saveAllChunks(ZZZ)Z"))
     private void arclight$unloadLevel(CallbackInfo ci) {
         for (var serverLevel : this.getAllLevels()) {
             ((CraftServerBridge) Bukkit.getServer()).bridge$removeWorld(serverLevel);
+        }
+    }
+
+    // Fusion Core: Paper's chunks.max-auto-save-chunks-per-tick - the periodic autosave (no flush, not forced) queues chunks
+    @com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod(method = "saveEverything")
+    private boolean fusioncore$markAutoSave(boolean suppressLog, boolean flush, boolean force, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Boolean> original) {
+        boolean autoSave = !flush && !force;
+        io.izzel.arclight.common.mod.util.FusionCoreAutoSave.setAutoSaving(autoSave);
+        try {
+            return original.call(suppressLog, flush, force);
+        } finally {
+            io.izzel.arclight.common.mod.util.FusionCoreAutoSave.setAutoSaving(false);
         }
     }
 

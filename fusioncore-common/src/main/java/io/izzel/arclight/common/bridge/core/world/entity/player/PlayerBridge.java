@@ -24,4 +24,7 @@ public interface PlayerBridge extends LivingEntityBridge {
     default boolean bridge$platform$mayfly() {
         return ((Player) this).getAbilities().mayfly;
     }
+
+    /** Player#drop with CraftBukkit's choice whether PlayerDropItemEvent fires (SPIGOT-2942). */
+    net.minecraft.world.entity.item.ItemEntity bridge$drop(net.minecraft.world.item.ItemStack stack, boolean dropAround, boolean traceItem, boolean callEvent);
 }

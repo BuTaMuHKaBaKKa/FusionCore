@@ -169,6 +169,26 @@ public abstract class LevelMixin implements WorldBridge, LevelAccessor, LevelWri
         return this.spigotConfig;
     }
 
+    // Fusion Core: Paper's Anti-Xray, a block that stops hiding its neighbours reveals them (Paper patch 0992)
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/chunk/LevelChunk;setBlockState(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Z)Lnet/minecraft/world/level/block/state/BlockState;"))
+    private BlockState fusioncore$antiXrayChange(LevelChunk chunk, BlockPos pos, BlockState state, boolean moved, com.llamalad7.mixinextras.injector.wrapoperation.Operation<BlockState> original,
+                                                 @com.llamalad7.mixinextras.sugar.Local(argsOnly = true, ordinal = 0) int flags, @com.llamalad7.mixinextras.sugar.Local(argsOnly = true, ordinal = 1) int depth) {
+        BlockState old = original.call(chunk, pos, state, moved);
+        if (old != null && (Object) this instanceof net.minecraft.server.level.ServerLevel) {
+            io.izzel.arclight.common.mod.util.FusionCoreAntiXray.controller((Level) (Object) this).onBlockChange((Level) (Object) this, pos, state, old, flags, depth);
+        }
+        return old;
+    }
+
+    // Fusion Core: Spigot resets the max-tnt-per-tick counter at the end of tickBlockEntities
+    @Inject(method = "tickBlockEntities", at = @At("RETURN"))
+    private void fusioncore$resetPrimedTnt(CallbackInfo ci) {
+        if (this.spigotConfig != null) {
+            this.spigotConfig.currentPrimedTnt = 0;
+        }
+    }
+
     @Inject(method = "setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z",
         at = @At("HEAD"), cancellable = true)
     private void arclight$hooks(BlockPos pos, BlockState newState, int flags, int i, CallbackInfoReturnable<Boolean> cir) {
@@ -213,7 +233,8 @@ public abstract class LevelMixin implements WorldBridge, LevelAccessor, LevelWri
                 int i = j & -34;
                 oldBlock.updateIndirectNeighbourShapes(this, pos, i, k - 1);
                 try {
-                    if (this.world != null) {
+                    // Fusion Core: no listener, no Bukkit block, data and event for every shape update
+                    if (this.world != null && BlockPhysicsEvent.getHandlerList().getRegisteredListeners().length > 0) {
                         BlockPhysicsEvent event = new BlockPhysicsEvent(CraftBlock.at(this, pos), CraftBlockData.fromData(newBlock));
                         Bukkit.getPluginManager().callEvent(event);
                         if (event.isCancelled()) {

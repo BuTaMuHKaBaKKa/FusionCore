@@ -28,7 +28,18 @@ public abstract class ChunkMap_TrackedEntityMixin implements ChunkMap_TrackedEnt
     @Shadow @Final public Set<ServerPlayerConnection> seenBy;
     @Shadow @Final Entity entity;
     @Shadow SectionPos lastSectionPos;
+    @Shadow private int getEffectiveRange() { return 0; }
     // @formatter:on
+
+    @Override
+    public Set<ServerPlayerConnection> fusioncore$seenBy() {
+        return this.seenBy;
+    }
+
+    @Override
+    public int fusioncore$effectiveRange() {
+        return this.getEffectiveRange();
+    }
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void arclight$setTrackedPlayers(ChunkMap outer, Entity entity, int range, int updateFrequency, boolean sendVelocityUpdates, CallbackInfo ci) {

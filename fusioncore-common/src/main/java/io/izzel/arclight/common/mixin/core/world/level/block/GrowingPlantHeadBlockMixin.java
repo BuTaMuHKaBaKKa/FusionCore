@@ -17,4 +17,10 @@ public class GrowingPlantHeadBlockMixin {
     private boolean arclight$blockGrow(ServerLevel world, BlockPos to, BlockState state, BlockState state1, ServerLevel worldIn, BlockPos from, RandomSource random) {
         return CraftEventFactory.handleBlockSpreadEvent(world, from, to, state);
     }
+
+    // Fusion Core: Spigot's growth.{kelp,twisting-vines,weeping-vines,cave-vines}-modifier scale the grow chance
+    @com.llamalad7.mixinextras.injector.ModifyExpressionValue(method = "randomTick", at = @At(value = "FIELD", target = "Lnet/minecraft/world/level/block/GrowingPlantHeadBlock;growPerTickProbability:D"))
+    private double fusioncore$growthModifier(double probability, @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) ServerLevel level) {
+        return io.izzel.arclight.common.mod.util.FusionCoreGrowth.modifier(this, level) / 100.0D * probability;
+    }
 }

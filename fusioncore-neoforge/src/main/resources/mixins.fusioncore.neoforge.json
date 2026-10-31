@@ -67,6 +67,7 @@
     "core.world.item.MilkBucketItemMixin_NeoForge",
     "core.world.item.ShearsItemMixin_NeoForge",
     "core.world.item.crafting.RecipeManagerMixin_NeoForge",
+    "core.world.level.ExplosionMixin_Machines",
     "core.world.level.ExplosionMixin_NeoForge",
     "core.world.level.LevelMixin_Machines",
     "core.world.level.LevelMixin_NeoForge",

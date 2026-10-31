@@ -58,7 +58,9 @@ public interface AbstractBootstrap {
                                 var reset = new InsnList();
                                 reset.add(new InsnNode(Opcodes.ACONST_NULL));
                                 reset.add(new FieldInsnNode(Opcodes.PUTSTATIC, "com/mojang/brigadier/tree/CommandNode", fieldNode.name, fieldNode.desc));
-                                method.instructions.insert(instruction, assign);
+                                // Fusion Core: reset after the requirement test, as CraftBukkit's CommandNode#canUse does (this
+                                // inserted the already-consumed assign list, leaving the last checked node set for good)
+                                method.instructions.insert(instruction, reset);
                                 break;
                             }
                         }

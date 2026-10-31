@@ -54,6 +54,11 @@ public abstract class PrimedTntMixin extends EntityMixin {
      */
     @Overwrite
     public void tick() {
+        // Fusion Core: Spigot's max-tnt-per-tick, the counter is reset after the block entities of the level tick
+        org.spigotmc.SpigotWorldConfig spigot = ((io.izzel.arclight.common.bridge.core.world.level.WorldBridge) this.level()).bridge$spigotConfig();
+        if (spigot.maxTntTicksPerTick > 0 && ++spigot.currentPrimedTnt > spigot.maxTntTicksPerTick) {
+            return;
+        }
         this.handlePortal();
         this.applyGravity();
         this.move(MoverType.SELF, this.getDeltaMovement());

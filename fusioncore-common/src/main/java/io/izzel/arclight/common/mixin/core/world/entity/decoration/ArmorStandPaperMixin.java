@@ -14,8 +14,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Fusion Core: Paper's armor stand ticking switch (patch 0217, saved as {@code Paper.CanTickOverride}) and movement
- * switch (patch 0118).
+ * Fusion Core: Paper's armor stand ticking switch (patch 0217, saved as {@code Paper.CanTickOverride}; the world default is
+ * {@code world.armorstand.tick}), movement switch (patch 0118), and the minecart part of Paper's collision lookup switch
+ * (patch 0215, {@code world.armorstand.minecart-collision-lookups}).
  */
 @Mixin(ArmorStand.class)
 public abstract class ArmorStandPaperMixin implements ArmorStandPaperBridge {
@@ -53,6 +54,21 @@ public abstract class ArmorStandPaperMixin implements ArmorStandPaperBridge {
     @Override
     public boolean fusioncore$isDisabled(EquipmentSlot slot) {
         return this.isDisabled(slot);
+    }
+
+    @Inject(method = "<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V", at = @At("RETURN"))
+    private void fusioncore$worldCanTick(net.minecraft.world.entity.EntityType<?> type, net.minecraft.world.level.Level level, CallbackInfo ci) {
+        if (level != null) {
+            // the world's default; Paper.CanTickOverride (read later from the save) and setCanTick take precedence
+            this.fusioncore$canTick = io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(level).getArmorstand().isTick();
+        }
+    }
+
+    @Inject(method = "pushEntities", cancellable = true, at = @At("HEAD"))
+    private void fusioncore$minecartLookups(CallbackInfo ci) {
+        if (!io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(((ArmorStand) (Object) this).level()).getArmorstand().isMinecartCollisionLookups()) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "tick", cancellable = true, at = @At("HEAD"))

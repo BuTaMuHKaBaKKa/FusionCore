@@ -899,6 +899,11 @@ public abstract class EntityMixin implements InternalEntityBridge, EntityBridge,
 
     @Inject(method = "setAirSupply", cancellable = true, at = @At(value = "HEAD"))
     public void arclight$setAir$EntityAirChangeEvent(int air, CallbackInfo ci) {
+        // Fusion Core: this runs every tick for every living entity; with no listener the event could not change anything
+        if (EntityAirChangeEvent.getHandlerList().getRegisteredListeners().length == 0) {
+            this.entityData.set(DATA_AIR_SUPPLY_ID, air);
+            return;
+        }
         // CraftBukkit start
         EntityAirChangeEvent event = new EntityAirChangeEvent(this.getBukkitEntity(), air);
         // Suppress during worldgen

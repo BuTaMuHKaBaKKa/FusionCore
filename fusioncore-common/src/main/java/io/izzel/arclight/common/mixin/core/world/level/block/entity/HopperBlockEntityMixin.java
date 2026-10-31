@@ -70,7 +70,8 @@ public abstract class HopperBlockEntityMixin extends BaseContainerBlockEntityMix
     @Decorate(method = "ejectItems", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/HopperBlockEntity;addItem(Lnet/minecraft/world/Container;Lnet/minecraft/world/Container;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/core/Direction;)Lnet/minecraft/world/item/ItemStack;"))
     private static ItemStack arclight$moveItem(Container source, Container destination, ItemStack stack, Direction direction) throws Throwable {
         var entity = (HopperBlockEntity) ArclightCaptures.getTickingBlockEntity();
-        if (entity != null) {
+        // Fusion Core: no listener - the vanilla transfer, without building the Bukkit inventories and event
+        if (entity != null && InventoryMoveItemEvent.getHandlerList().getRegisteredListeners().length > 0) {
             CraftItemStack original = CraftItemStack.asCraftMirror(stack);
 
             Inventory destinationInventory;
@@ -98,7 +99,8 @@ public abstract class HopperBlockEntityMixin extends BaseContainerBlockEntityMix
     @Decorate(method = "tryTakeInItemFromSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/HopperBlockEntity;addItem(Lnet/minecraft/world/Container;Lnet/minecraft/world/Container;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/core/Direction;)Lnet/minecraft/world/item/ItemStack;"))
     private static ItemStack arclight$pullItem(Container source, Container destination, ItemStack stack, Direction direction) throws Throwable {
         var entity = (HopperBlockEntity) ArclightCaptures.getTickingBlockEntity();
-        if (entity != null) {
+        // Fusion Core: no listener - the vanilla transfer, without building the Bukkit inventories and event
+        if (entity != null && InventoryMoveItemEvent.getHandlerList().getRegisteredListeners().length > 0) {
             CraftItemStack original = CraftItemStack.asCraftMirror(stack);
 
             Inventory sourceInventory;
@@ -124,6 +126,54 @@ public abstract class HopperBlockEntityMixin extends BaseContainerBlockEntityMix
         return (ItemStack) DecorationOps.callsite().invoke(source, destination, stack, direction);
     }
 
+    // Fusion Core: Spigot's hopper-amount on the vanilla transfer (on NeoForge most containers go through
+    // VanillaInventoryCodeHooks instead, see VanillaInventoryCodeHooksMixin there)
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "ejectItems", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/HopperBlockEntity;removeItem(II)Lnet/minecraft/world/item/ItemStack;"))
+    private static ItemStack fusioncore$ejectAmount(HopperBlockEntity hopper, int slot, int count, com.llamalad7.mixinextras.injector.wrapoperation.Operation<ItemStack> original) {
+        return original.call(hopper, slot, io.izzel.arclight.common.mod.util.FusionCoreHoppers.amount(hopper));
+    }
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "ejectItems", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;setCount(I)V"))
+    private static void fusioncore$ejectRest(ItemStack stack, int count, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original,
+                                             @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) HopperBlockEntity hopper,
+                                             @com.llamalad7.mixinextras.sugar.Local(ordinal = 0) int slot,
+                                             @com.llamalad7.mixinextras.sugar.Local(ordinal = 1) ItemStack leftover) {
+        int amount = io.izzel.arclight.common.mod.util.FusionCoreHoppers.amount(hopper);
+        if (amount == 1) {
+            original.call(stack, count);
+        } else {
+            io.izzel.arclight.common.mod.util.FusionCoreHoppers.restore(hopper, slot, stack, count, leftover, amount);
+        }
+    }
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "tryTakeInItemFromSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/Container;removeItem(II)Lnet/minecraft/world/item/ItemStack;"))
+    private static ItemStack fusioncore$pullAmount(Container container, int slot, int count, com.llamalad7.mixinextras.injector.wrapoperation.Operation<ItemStack> original,
+                                                   @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Hopper hopper) {
+        return original.call(container, slot, io.izzel.arclight.common.mod.util.FusionCoreHoppers.amount(hopper));
+    }
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "tryTakeInItemFromSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;setCount(I)V"))
+    private static void fusioncore$pullRest(ItemStack stack, int count, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original,
+                                            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Hopper hopper,
+                                            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Container container,
+                                            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) int slot,
+                                            @com.llamalad7.mixinextras.sugar.Local(ordinal = 1) ItemStack leftover) {
+        int amount = io.izzel.arclight.common.mod.util.FusionCoreHoppers.amount(hopper);
+        if (amount == 1) {
+            original.call(stack, count);
+        } else {
+            io.izzel.arclight.common.mod.util.FusionCoreHoppers.restore(container, slot, stack, count, leftover, amount);
+        }
+    }
+
+    // Fusion Core: Paper's hopper.ignore-occluding-blocks, no entity search inside a full block
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "getContainerAt(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;DDD)Lnet/minecraft/world/Container;",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/entity/HopperBlockEntity;getEntityContainer(Lnet/minecraft/world/level/Level;DDD)Lnet/minecraft/world/Container;"))
+    private static Container fusioncore$ignoreOccluding(Level level, double x, double y, double z, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Container> original,
+                                                        @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) BlockState state) {
+        return io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.skipEntityContainers(level, state) ? null : original.call(level, x, y, z);
+    }
+
     @Inject(method = "addItem(Lnet/minecraft/world/Container;Lnet/minecraft/world/entity/item/ItemEntity;)Z", cancellable = true, at = @At("HEAD"))
     private static void arclight$pickupItem(Container inventory, ItemEntity itemEntity, CallbackInfoReturnable<Boolean> cir) {
         InventoryPickupItemEvent event = new InventoryPickupItemEvent(((IInventoryBridge) inventory).getOwnerInventory(), (Item) itemEntity.bridge$getBukkitEntity());
@@ -147,6 +197,9 @@ public abstract class HopperBlockEntityMixin extends BaseContainerBlockEntityMix
 
     @Inject(method = "getAttachedContainer", cancellable = true, at = @At("RETURN"))
     private static void arclight$searchTo(Level level, BlockPos pos, HopperBlockEntity hopperBlockEntity, CallbackInfoReturnable<Container> cir) {
+        if (HopperInventorySearchEvent.getHandlerList().getRegisteredListeners().length == 0) {
+            return; // Fusion Core: no listener - the vanilla container as it is
+        }
         var container = cir.getReturnValue();
         var hopper = CraftBlock.at(level, pos);
         var searchBlock = CraftBlock.at(level, pos.relative(hopperBlockEntity.facing));
@@ -155,6 +208,9 @@ public abstract class HopperBlockEntityMixin extends BaseContainerBlockEntityMix
 
     @Inject(method = "getSourceContainer", cancellable = true, at = @At("RETURN"))
     private static void arclight$searchFrom(Level level, Hopper hopper, BlockPos blockposition, BlockState iblockdata, CallbackInfoReturnable<Container> cir) {
+        if (HopperInventorySearchEvent.getHandlerList().getRegisteredListeners().length == 0) {
+            return; // Fusion Core: no listener - the vanilla container as it is
+        }
         var container = cir.getReturnValue();
         var blockPos = BlockPos.containing(hopper.getLevelX(), hopper.getLevelY(), hopper.getLevelZ());
         var hopperBlock = CraftBlock.at(level, blockPos);

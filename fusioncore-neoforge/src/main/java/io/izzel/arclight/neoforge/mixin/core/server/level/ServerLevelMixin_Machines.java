@@ -14,7 +14,7 @@ public class ServerLevelMixin_Machines {
 
     @Inject(method = "addFreshEntity", at = @At("HEAD"))
     private void fusioncore$inheritOwner(Entity entity, CallbackInfoReturnable<Boolean> cir) {
-        if (MachineOwners.hasContext() && MachineOwners.modOf(entity) != null) {
+        if (MachineOwners.hasContext() && MachineOwners.machineModOf(entity) != null) {
             MachineOwners.inherit(entity.getPersistentData());
         }
     }

@@ -142,6 +142,23 @@ public abstract class ExplosionMixin implements ExplosionBridge {
         return wasCanceled;
     }
 
+    // Fusion Core: Paper patch 0398 (unsupported-settings.allow-headless-pistons false): a moving piston head that is blown up takes
+    // its piston with it, so no headless piston is left. The state the ray read just before is checked first, as Paper does; only
+    // a moving piston there is looked up again (a mod's explosion callback in between may have changed the block)
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "explode", at = @At(value = "INVOKE", target = "Ljava/util/Set;add(Ljava/lang/Object;)Z"))
+    private boolean fusioncore$headlessPistons(java.util.Set<Object> set, Object element, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Boolean> original,
+                                               @com.llamalad7.mixinextras.sugar.Local BlockState rayState) {
+        boolean added = original.call(set, element);
+        if (rayState.is(Blocks.MOVING_PISTON) && element instanceof BlockPos pos
+            && !io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(this.level).getUnsupportedSettings().isAllowHeadlessPistons()) {
+            BlockState state = this.level.getBlockState(pos);
+            if (state.is(Blocks.MOVING_PISTON) && this.level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.piston.PistonMovingBlockEntity moving && moving.isSourcePiston()) {
+                set.add(pos.relative(state.getValue(net.minecraft.world.level.block.piston.PistonHeadBlock.FACING).getOpposite()));
+            }
+        }
+        return added;
+    }
+
     @Inject(method = "finalizeExplosion", cancellable = true, at = @At(value = "INVOKE", shift = At.Shift.AFTER, target = "Lnet/minecraft/Util;shuffle(Ljava/util/List;Lnet/minecraft/util/RandomSource;)V"))
     private void arclight$blockExplode(boolean bl, CallbackInfo ci) {
         if (this.arclight$callBlockExplodeEvent()) {

@@ -1077,8 +1077,28 @@ public abstract class ServerPlayerMixin extends PlayerMixin implements ServerPla
         arclight$restoreFromDeath(serverPlayer);
     }
 
-    // Fusion Core: Paper's close reasons (Paper patch 0208)
+    // Fusion Core: Leaf's optimization.only-tick-items-in-hand, map updates only for the items in the hands
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "doTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Inventory;getItem(I)Lnet/minecraft/world/item/ItemStack;"))
+    private net.minecraft.world.item.ItemStack fusioncore$onlyHandItems(net.minecraft.world.entity.player.Inventory inventory, int slot, com.llamalad7.mixinextras.injector.wrapoperation.Operation<net.minecraft.world.item.ItemStack> original) {
+        if (io.izzel.arclight.i18n.ArclightConfig.spec().getOptimization().isOnlyTickItemsInHand()
+            && slot != inventory.selected && slot != net.minecraft.world.entity.player.Inventory.SLOT_OFFHAND) {
+            return net.minecraft.world.item.ItemStack.EMPTY;
+        }
+        return original.call(inventory, slot);
+    }
 
+    // Fusion Core: Paper's tick-rates.container-update, the open menu sends its changes every that many ticks
+    private int fusioncore$containerUpdateDelay;
+
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/AbstractContainerMenu;broadcastChanges()V"))
+    private void fusioncore$containerUpdateRate(net.minecraft.world.inventory.AbstractContainerMenu menu, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original) {
+        if (--this.fusioncore$containerUpdateDelay <= 0) {
+            original.call(menu);
+            this.fusioncore$containerUpdateDelay = io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(this.level()).getTickRates().getContainerUpdate();
+        }
+    }
+
+    // Fusion Core: Paper's close reasons (Paper patch 0208)
     @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;closeContainer()V"))
     private void fusioncore$closeCantUse(ServerPlayer self, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original) {
         io.izzel.arclight.common.mod.util.FusionCoreEvents.closeWith(org.bukkit.event.inventory.InventoryCloseEvent$Reason.CANT_USE, () -> original.call(self));

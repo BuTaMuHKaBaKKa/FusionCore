@@ -49,6 +49,19 @@ public abstract class ChunkGeneratorMixin implements ChunkGeneratorBridge {
     @Shadow @Final @Mutable protected BiomeSource biomeSource;
     // @formatter:on
 
+    // Fusion Core: Paper's feature-seeds (patch 0624); the second setFeatureSeed of applyBiomeDecoration seeds a placed feature
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "applyBiomeDecoration", at = @At(value = "INVOKE", ordinal = 1, target = "Lnet/minecraft/world/level/levelgen/WorldgenRandom;setFeatureSeed(JII)V"))
+    private void fusioncore$featureSeed(WorldgenRandom random, long seed, int index, int step, Operation<Void> original,
+                                        @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) WorldGenLevel level,
+                                        @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) ChunkAccess chunk,
+                                        @com.llamalad7.mixinextras.sugar.Local net.minecraft.world.level.levelgen.placement.PlacedFeature placed) {
+        long configSeed = io.izzel.arclight.common.mod.util.FusionCoreFeatureSeeds.seed(level.getLevel(), placed.feature().value());
+        if (configSeed != -1) {
+            seed = random.setDecorationSeed(configSeed, chunk.getPos().getMinBlockX(), chunk.getPos().getMinBlockZ());
+        }
+        original.call(random, seed, index, step);
+    }
+
     @Inject(method = "applyBiomeDecoration", at = @At("RETURN"))
     private void arclight$addBukkitDecoration(WorldGenLevel level, ChunkAccess chunkAccess, StructureManager manager, CallbackInfo ci) {
         this.addDecorations(level, chunkAccess, manager);

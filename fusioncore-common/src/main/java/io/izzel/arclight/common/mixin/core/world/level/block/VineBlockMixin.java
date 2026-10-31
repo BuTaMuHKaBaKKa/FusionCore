@@ -39,7 +39,9 @@ public abstract class VineBlockMixin extends BlockMixin {
         if (!worldIn.getGameRules().getBoolean(GameRules.RULE_DO_VINES_SPREAD)) {
             return;
         }
-        if (worldIn.random.nextInt(4) == 0 && worldIn.isLoaded(pos)) {
+        // Fusion Core: Spigot's growth.vine-modifier
+        int modifier = ((io.izzel.arclight.common.bridge.core.world.level.WorldBridge) worldIn).bridge$spigotConfig().vineModifier;
+        if ((modifier == 100 ? worldIn.random.nextInt(4) == 0 : worldIn.random.nextFloat() < modifier / (100.0F * 4)) && worldIn.isLoaded(pos)) {
             Direction direction = Direction.getRandom(random);
             BlockPos blockpos = pos.above();
             if (direction.getAxis().isHorizontal() && !state.getValue(getPropertyForFace(direction))) {

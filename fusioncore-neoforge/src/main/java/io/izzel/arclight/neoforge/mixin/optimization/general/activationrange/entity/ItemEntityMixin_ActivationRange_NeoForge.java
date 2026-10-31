@@ -39,6 +39,11 @@ public abstract class ItemEntityMixin_ActivationRange_NeoForge extends EntityMix
     }
 
     @Override
+    public int bridge$fusioncore$despawnAge() {
+        return this.lifespan;
+    }
+
+    @Override
     public void bridge$forge$optimization$discardItemEntity() {
         if (!this.level().isClientSide && this.age >= this.lifespan) {
             int hook = EventHooks.onItemExpire((ItemEntity) (Object) this);

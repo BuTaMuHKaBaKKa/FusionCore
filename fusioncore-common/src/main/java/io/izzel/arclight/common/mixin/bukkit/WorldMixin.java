@@ -614,7 +614,8 @@ public interface WorldMixin extends net.kyori.adventure.audience.ForwardingAudie
         double blockHitDistance = maxDistance;
         if (blockHit != null) {
             startVec = new org.bukkit.util.Vector(start.x(), start.y(), start.z());
-            blockHitDistance = startVec.distance(blockHit.getHitPosition());
+            // Fusion Core: a mod's block hit reported far away (Sable's constructs) must not widen the entity search
+            blockHitDistance = Math.min(maxDistance, startVec.distance(blockHit.getHitPosition()));
         }
         org.bukkit.util.RayTraceResult entityHit = this.rayTraceEntities(start, direction, blockHitDistance, raySize, filter);
         if (blockHit == null) {

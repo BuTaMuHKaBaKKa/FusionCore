@@ -63,6 +63,11 @@ public abstract class ChunkHolderMixin extends GenerationChunkHolder implements 
     }
 
     @Override
+    public void bridge$updateHighestAllowedStatus(ChunkMap manager) {
+        this.updateHighestAllowedStatus(manager);
+    }
+
+    @Override
     public void bridge$callEventIfUnloading(ChunkMap manager) {
         callEventIfUnloading(manager);
     }

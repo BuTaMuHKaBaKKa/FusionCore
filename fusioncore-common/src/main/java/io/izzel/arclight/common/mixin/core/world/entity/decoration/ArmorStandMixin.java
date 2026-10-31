@@ -41,7 +41,16 @@ public abstract class ArmorStandMixin extends LivingEntityMixin {
     @Shadow public abstract ItemStack getItemBySlot(net.minecraft.world.entity.EquipmentSlot slotIn);
     @Shadow @Final private NonNullList<ItemStack> handItems;
     @Shadow @Final private NonNullList<ItemStack> armorItems;
+    @Shadow private void setShowArms(boolean showArms) {}
     // @formatter:on
+
+    // Fusion Core: Purpur's gameplay-mechanics.armorstand.place-with-arms-visible; a saved stand reads its own flag afterwards
+    @Inject(method = "<init>(Lnet/minecraft/world/entity/EntityType;Lnet/minecraft/world/level/Level;)V", at = @At("RETURN"))
+    private void fusioncore$placeWithArms(net.minecraft.world.entity.EntityType<?> type, Level level, CallbackInfo ci) {
+        if (level != null && io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(level).getArmorstand().isPlaceWithArmsVisible()) {
+            this.setShowArms(true);
+        }
+    }
 
     @Override
     public float getBukkitYaw() {

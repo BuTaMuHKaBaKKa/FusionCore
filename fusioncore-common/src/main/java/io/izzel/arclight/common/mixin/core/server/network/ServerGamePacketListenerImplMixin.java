@@ -326,6 +326,13 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
                     speed = this.player.getAbilities().walkingSpeed * 10.0f;
                 }
                 speed *= 2.0;
+                // Fusion Core: Paper's chunks.prevent-moving-into-unloaded-chunks
+                if (io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(worldserver).getChunks().isPreventMovingIntoUnloadedChunks() && (
+                    !io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.areChunksLoadedForMove(worldserver, this.player.getBoundingBox().expandTowards(new Vec3(d4, d5, d6).subtract(this.player.position())))
+                        || !io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.areChunksLoadedForMove(worldserver, entity.getBoundingBox().expandTowards(new Vec3(d4, d5, d6).subtract(entity.position()))))) {
+                    this.send(new ClientboundMoveVehiclePacket(entity));
+                    return;
+                }
                 if (d11 - d10 > Math.max(100.0, Math.pow(10.0f * i * speed, 2.0)) && !this.isSingleplayerOwner()) {
                     LOGGER.warn("{} (vehicle of {}) moved too quickly! {},{},{}", entity.getName().getString(), this.player.getName().getString(), d7, d8, d9);
                     this.send(new ClientboundMoveVehiclePacket(entity));
@@ -376,16 +383,14 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
                     this.lastPitch = prevPitch;
                     this.hasMoved = true;
                 }
-                Location from = new Location(player.getWorld(), this.lastPosX, this.lastPosY, this.lastPosZ, this.lastYaw, this.lastPitch);
-                Location to = player.getLocation().clone();
-                to.setX(packetplayinvehiclemove.getX());
-                to.setY(packetplayinvehiclemove.getY());
-                to.setZ(packetplayinvehiclemove.getZ());
-                to.setYaw(packetplayinvehiclemove.getYRot());
-                to.setPitch(packetplayinvehiclemove.getXRot());
-                double delta = Math.pow(this.lastPosX - to.getX(), 2.0) + Math.pow(this.lastPosY - to.getY(), 2.0) + Math.pow(this.lastPosZ - to.getZ(), 2.0);
-                float deltaAngle = Math.abs(this.lastYaw - to.getYaw()) + Math.abs(this.lastPitch - to.getPitch());
+                // Fusion Core: the Locations are built only for a move that reaches the threshold (most packets do not)
+                double toX = packetplayinvehiclemove.getX(), toY = packetplayinvehiclemove.getY(), toZ = packetplayinvehiclemove.getZ();
+                float toYaw = packetplayinvehiclemove.getYRot(), toPitch = packetplayinvehiclemove.getXRot();
+                double delta = Math.pow(this.lastPosX - toX, 2.0) + Math.pow(this.lastPosY - toY, 2.0) + Math.pow(this.lastPosZ - toZ, 2.0);
+                float deltaAngle = Math.abs(this.lastYaw - toYaw) + Math.abs(this.lastPitch - toPitch);
                 if ((delta > 0.00390625 || deltaAngle > 10.0f) && !((ServerPlayerBridge) this.player).bridge$isMovementBlocked()) {
+                    Location from = new Location(player.getWorld(), this.lastPosX, this.lastPosY, this.lastPosZ, this.lastYaw, this.lastPitch);
+                    Location to = new Location(player.getWorld(), toX, toY, toZ, toYaw, toPitch);
                     this.lastPosX = to.getX();
                     this.lastPosY = to.getY();
                     this.lastPosZ = to.getZ();
@@ -569,6 +574,13 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
                                 } else {
                                     speed = player.getAbilities().walkingSpeed * 10f;
                                 }
+                                // Fusion Core: Paper's chunks.prevent-moving-into-unloaded-chunks
+                                if (io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.spec(worldserver).getChunks().isPreventMovingIntoUnloadedChunks()
+                                    && (this.player.getX() != d0 || this.player.getZ() != d2)
+                                    && !io.izzel.arclight.common.mod.util.FusionCoreWorldSettings.areChunksLoadedForMove(worldserver, this.player.getBoundingBox().expandTowards(new Vec3(d0, d1, d2).subtract(this.player.position())))) {
+                                    this.fusioncore$teleport(new Location(((ServerPlayerBridge) this.player).bridge$getBukkitEntity().getWorld(), this.player.getX(), this.player.getY(), this.player.getZ(), this.player.getYRot(), this.player.getXRot()), Collections.emptySet());
+                                    return;
+                                }
 
                                 if (!this.player.isChangingDimension() && (!this.player.serverLevel().getGameRules().getBoolean(GameRules.RULE_DISABLE_ELYTRA_MOVEMENT_CHECK) || !this.player.isFallFlying())) {
                                     float f2 = this.player.isFallFlying() ? 300.0F : 100.0F;
@@ -664,8 +676,9 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
                                     this.lastPitch = prevPitch;
                                     this.hasMoved = true;
                                 }
-                                Location from = new Location(player.getWorld(), this.lastPosX, this.lastPosY, this.lastPosZ, this.lastYaw, this.lastPitch);
-                                Location to = player.getLocation().clone();
+                                // Fusion Core: one Location (the player's own) per packet; from/to are built only for a move that
+                                // reaches the threshold (it used to be three Locations for every packet)
+                                Location to = player.getLocation();
                                 if (packetplayinflying.hasPos) {
                                     to.setX(packetplayinflying.x);
                                     to.setY(packetplayinflying.y);
@@ -678,11 +691,17 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
                                 double delta = Math.pow(this.lastPosX - to.getX(), 2.0) + Math.pow(this.lastPosY - to.getY(), 2.0) + Math.pow(this.lastPosZ - to.getZ(), 2.0);
                                 float deltaAngle = Math.abs(this.lastYaw - to.getYaw()) + Math.abs(this.lastPitch - to.getPitch());
                                 if ((delta > 1f / 256 || deltaAngle > 10f) && !((ServerPlayerBridge) this.player).bridge$isMovementBlocked()) {
+                                    Location from = new Location(player.getWorld(), this.lastPosX, this.lastPosY, this.lastPosZ, this.lastYaw, this.lastPitch);
                                     this.lastPosX = to.getX();
                                     this.lastPosY = to.getY();
                                     this.lastPosZ = to.getZ();
                                     this.lastYaw = to.getYaw();
                                     this.lastPitch = to.getPitch();
+                                    // Fusion Core: Purpur's AFK API, moving to another block or turning counts as an action
+                                    if (!to.getWorld().getUID().equals(from.getWorld().getUID()) || to.getBlockX() != from.getBlockX() || to.getBlockY() != from.getBlockY()
+                                        || to.getBlockZ() != from.getBlockZ() || to.getYaw() != from.getYaw() || to.getPitch() != from.getPitch()) {
+                                        this.player.resetLastActionTime();
+                                    }
                                     Location oldTo = to.clone();
                                     PlayerMoveEvent event = new PlayerMoveEvent(player, from, to);
                                     this.cserver.getPluginManager().callEvent(event);
@@ -1124,7 +1143,8 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
         double d2 = this.player.getY() + this.player.getEyeHeight();
         double d3 = this.player.getZ();
         double d4 = ((PlayerBridge) this.player).bridge$platform$getBlockReach();
-        var origin = new Location(this.player.level().bridge$getWorld(), d0, d2, d3, f1, f2);
+        // Fusion Core: yaw first, as in CraftBukkit (the ray pointed the wrong way)
+        var origin = new Location(this.player.level().bridge$getWorld(), d0, d2, d3, f2, f1);
         var result = this.player.level().bridge$getWorld().rayTrace(origin, origin.getDirection(), d4, org.bukkit.FluidCollisionMode.NEVER, false, 0.1, entity -> {
             Entity handle = ((CraftEntity) entity).getHandle();
             return handle != this.player && ((ServerPlayerBridge) this.player).bridge$getBukkitEntity().canSee(entity) && !handle.isSpectator() && handle.isPickable() && !handle.isPassengerOfSameVehicle(player);
@@ -1138,6 +1158,16 @@ public abstract class ServerGamePacketListenerImplMixin extends ServerCommonPack
         if (event.isCancelled()) {
             ci.cancel();
         }
+    }
+
+    // Fusion Core: Purpur's idle-timeout - an idle player becomes AFK and is kicked only with kick-if-idle
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;disconnect(Lnet/minecraft/network/chat/Component;)V"))
+    private void fusioncore$idle(ServerGamePacketListenerImpl listener, net.minecraft.network.chat.Component reason, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original) {
+        if (reason.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents contents
+            && "multiplayer.disconnect.idling".equals(contents.getKey()) && !io.izzel.arclight.common.mod.util.FusionCoreAfk.idle(this.player)) {
+            return;
+        }
+        original.call(listener, reason);
     }
 
     @Inject(method = "handlePlayerCommand", cancellable = true, at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;resetLastActionTime()V"))

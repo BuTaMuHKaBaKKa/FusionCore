@@ -88,6 +88,15 @@ public abstract class ServerPlayerGameModeMixin implements ServerPlayerGameModeB
      * It is thus implemented differently when the original event gets cancelled.
      * See PSI for firing when it's cancelled.
      */
+    // Fusion Core: Paper's Anti-Xray, digging at a block within reach reveals the hidden blocks around it (Paper patch 0992)
+    @Inject(method = "handleBlockBreakAction", at = @At("TAIL"))
+    private void fusioncore$antiXrayDig(BlockPos pos, net.minecraft.network.protocol.game.ServerboundPlayerActionPacket.Action action, net.minecraft.core.Direction direction,
+                                        int worldHeight, int sequence, CallbackInfo ci) {
+        if (this.player.canInteractWithBlock(pos, 1.0) && pos.getY() < worldHeight) {
+            io.izzel.arclight.common.mod.util.FusionCoreAntiXray.controller(this.level).onPlayerLeftClickBlock((net.minecraft.server.level.ServerPlayerGameMode) (Object) this, pos, action, direction, worldHeight, sequence);
+        }
+    }
+
     @Decorate(method = "handleBlockBreakAction", at = @At(value = "INVOKE", ordinal = 0, target = "Lnet/minecraft/server/network/ServerGamePacketListenerImpl;send(Lnet/minecraft/network/protocol/Packet;)V"),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;mayInteract(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/core/BlockPos;)Z")))
     private void arclight$mayNotInteractEvent(ServerGamePacketListenerImpl instance, Packet<?> packet, BlockPos blockPos, ServerboundPlayerActionPacket.Action action, Direction direction) throws Throwable {

@@ -150,12 +150,31 @@ public abstract class PlayerMixin extends LivingEntityMixin implements PlayerBri
         bridge$pushEffectCause(EntityPotionEffectEvent.Cause.TURTLE_HELMET);
     }
 
+    // Fusion Core: Leaf's optimization.only-tick-items-in-hand, only the selected item gets its inventory tick (maps,
+    // compasses and modded items elsewhere in the inventory, armor included, stop updating)
+    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "aiStep", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Inventory;tick()V"))
+    private void fusioncore$onlyTickItemsInHand(net.minecraft.world.entity.player.Inventory inventory, com.llamalad7.mixinextras.injector.wrapoperation.Operation<Void> original) {
+        if (!this.level().isClientSide && io.izzel.arclight.i18n.ArclightConfig.spec().getOptimization().isOnlyTickItemsInHand()) {
+            net.minecraft.world.item.ItemStack stack = inventory.getSelected();
+            if (!stack.isEmpty()) {
+                stack.inventoryTick(this.level(), (net.minecraft.world.entity.Entity) (Object) this, inventory.selected, true);
+            }
+        } else {
+            original.call(inventory);
+        }
+    }
+
     @Inject(method = "aiStep", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;heal(F)V"))
     private void arclight$healByRegen(CallbackInfo ci) {
         bridge$pushHealReason(EntityRegainHealthEvent.RegainReason.REGEN);
     }
 
     private transient boolean arclight$skipDropItemEvent;
+
+    @Override
+    public ItemEntity bridge$drop(ItemStack stack, boolean dropAround, boolean traceItem, boolean callEvent) {
+        return this.drop(stack, dropAround, traceItem, callEvent);
+    }
 
     public ItemEntity drop(ItemStack itemstack, boolean flag, boolean flag1, boolean callEvent) {
         try {

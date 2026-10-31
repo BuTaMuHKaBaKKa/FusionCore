@@ -40,6 +40,12 @@ public abstract class BlockAttachedEntityMixin extends EntityMixin {
         }
     }
 
+    // Fusion Core: Spigot's hanging-tick-frequency instead of vanilla's 100 ticks between survival checks
+    @org.spongepowered.asm.mixin.injection.ModifyConstant(method = "tick", constant = @org.spongepowered.asm.mixin.injection.Constant(intValue = 100))
+    private int fusioncore$hangingTickFrequency(int vanilla) {
+        return ((io.izzel.arclight.common.bridge.core.world.level.WorldBridge) this.level()).bridge$spigotConfig().hangingTickFrequency;
+    }
+
     @Inject(method = "tick", cancellable = true, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/decoration/BlockAttachedEntity;discard()V"))
     private void arclight$hangingBreak(CallbackInfo ci) {
         var state = this.level().getBlockState(new BlockPos(this.blockPosition()));
